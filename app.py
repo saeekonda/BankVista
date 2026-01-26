@@ -1,5 +1,5 @@
 """
-Branch AI - Dynamic Single-File Excel Dashboard
+BankVista - Dynamic Single-File Excel Dashboard
 REVOLUTIONARY: One Excel file with dropdown for ALL branches
 Save as: app.py
 Run with: streamlit run app.py
@@ -17,7 +17,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, Reference
 from openpyxl.worksheet.datavalidation import DataValidation
 
-st.set_page_config(page_title="Branch AI", page_icon="📊", layout="wide")
+st.set_page_config(page_title="BankVista", page_icon="📊", layout="wide")
 
 st.markdown("""<style>
 .main-title {font-size: 2.5rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.5rem;}
@@ -32,7 +32,7 @@ st.markdown("""<style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>""", unsafe_allow_html=True)
 
-class EnhancedBranchAI:
+class EnhancedBankVista:
     def __init__(self, data):
         self.data = data
         self.insights = {'critical': [], 'warning': [], 'success': []}
@@ -260,7 +260,7 @@ def create_dynamic_excel(df):
     
     # Title
     ws.merge_cells('A1:H1')
-    ws['A1'] = "🤖 BRANCH AI - DYNAMIC DASHBOARD"
+    ws['A1'] = "🤖 BANKVISTA - DYNAMIC DASHBOARD"
     ws['A1'].font = Font(bold=True, size=16, color="FFFFFF")
     ws['A1'].fill = PatternFill("solid", fgColor="1F4E78")
     ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
@@ -475,7 +475,7 @@ def create_dynamic_excel(df):
         c.border = thin_border
     
     for row_idx, row in df.iterrows():
-        ai = EnhancedBranchAI(row.to_dict())
+        ai = EnhancedBankVista(row.to_dict())
         results = ai.analyze()
         
         r = row_idx + 4
@@ -497,7 +497,7 @@ def create_dynamic_excel(df):
     
     # User Guide Sheet
     ws_guide = wb.create_sheet("User Guide")
-    ws_guide['A1'] = "🚀 BRANCH AI - USER GUIDE"
+    ws_guide['A1'] = "🚀 BANKVISTA - USER GUIDE"
     ws_guide['A1'].font = Font(bold=True, size=16, color="FFFFFF")
     ws_guide['A1'].fill = PatternFill("solid", fgColor="667EEA")
     ws_guide.merge_cells('A1:D1')
@@ -550,7 +550,7 @@ def create_dynamic_excel(df):
     return output
 
 def main():
-    st.markdown('<p class="main-title">🤖 Branch AI - Next Generation Analytics</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">🤖 BankVista - Next Generation Analytics</p>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Revolutionary Single-File Dynamic Dashboard | Complete Offline Solution</p>', unsafe_allow_html=True)
     
     # Feature highlight
@@ -575,7 +575,7 @@ def main():
         
         st.markdown("---")
         st.markdown("### 🏆 Market Comparison")
-        st.info("**vs Tableau:** Offline ✅\n**vs Power BI:** No license ✅\n**vs SAP:** Simple ✅\n**Branch AI:** All in one ✅")
+        st.info("**vs Tableau:** Offline ✅\n**vs Power BI:** No license ✅\n**vs SAP:** Simple ✅\n**BankVista:** All in one ✅")
     
     # Load data
     if uploaded:
@@ -593,7 +593,7 @@ def main():
         selected = st.selectbox("🏢 Select Branch (Preview)", df['Branch_Name'].tolist(), key=f"branch_selector_{len(df)}")
         
         branch_data = df[df['Branch_Name']==selected].iloc[0].to_dict()
-        ai = EnhancedBranchAI(branch_data)
+        ai = EnhancedBankVista(branch_data)
         results = ai.analyze()
         
         st.markdown("---")
@@ -650,7 +650,7 @@ def main():
                 st.download_button(
                     "📊 Download Dynamic Dashboard (All Branches)", 
                     dynamic_excel,
-                    f"Branch_AI_Dynamic_Dashboard_{date.today().strftime('%Y%m%d')}.xlsx",
+                    f"BankVista_Dynamic_Dashboard_{date.today().strftime('%Y%m%d')}.xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                     type="primary"
@@ -702,7 +702,7 @@ def main():
         
         with col2:
             st.markdown("""
-            ### 🚀 Branch AI Advantages
+            ### 🚀 BankVista Advantages
             
             **Cost:**
             - ✅ **FREE** - No licensing fees
@@ -801,20 +801,20 @@ def main():
             - **Enterprise:** White-label + custom features
             
             **Pricing Suggestions:**
-            1. **Branch AI Free**
+            1. **BankVista Free**
                - Up to 50 branches
                - Basic dashboard
                - Community support
                - **Price: ₹0**
             
-            2. **Branch AI Pro**
+            2. **BankVista Pro**
                - Unlimited branches
                - Trend analysis
                - Predictive alerts
                - Email support
                - **Price: ₹9,999/month for organization**
             
-            3. **Branch AI Enterprise**
+            3. **BankVista Enterprise**
                - Everything in Pro
                - Custom branding
                - API integration
@@ -895,7 +895,7 @@ def main():
     
     else:
         st.markdown("""<div style="text-align:center;padding:3rem;">
-        <h2>🚀 Welcome to Branch AI</h2>
+        <h2>🚀 Welcome to BankVista</h2>
         <p style="font-size:1.2rem;color:#666;margin-top:1rem;">Revolutionary single-file dynamic dashboard</p>
         <p style="color:#999;margin-top:1rem;">Upload your data or try sample to see the magic</p>
         <p style="color:#3498db;margin-top:2rem;font-size:1.1rem;">✨ One Excel file. All branches. Dropdown magic. ✨</p>
