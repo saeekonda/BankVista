@@ -236,15 +236,7 @@ def create_dynamic_excel(df):
     df = df.sort_values("Branch_Name").reset_index(drop=True)
     headers = df.columns.tolist()
     # Helper column for search-based dropdown
-    ws_data.cell(1, len(headers) + 1, "SearchMatch").font = Font(bold=True)
-
-    for r in range(2, len(df) + 2):
-        ws_data.cell(
-            r,
-            len(headers) + 1,
-            f'=IF(ISNUMBER(SEARCH(Dashboard!$B$3,B{r})),B{r},"")'
-        )
-
+    
     
     # Write all branch data
 
@@ -278,13 +270,16 @@ def create_dynamic_excel(df):
     # Create dropdown validation
     # Dropdown based on range (enables typing first letter)
     last_row = len(df) + 1  # header + data
-    search_col = get_column_letter(len(headers) + 1)
 
     dv = DataValidation(
         type="list",
-        formula1=f"=_Data!${search_col}$2:${search_col}${last_row}",
+        formula1=f"=_Data!$B$2:$B${last_row}",
         allow_blank=False
     )
+
+    dv.add('B3')
+    ws.add_data_validation(dv)
+
 
     dv.add('B3')
     ws.add_data_validation(dv)
