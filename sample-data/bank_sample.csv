@@ -1,0 +1,6 @@
+Branch_ID,Branch_Name,Zone,Total_Deposits,Deposit_Target,Advances,Advance_Target,NPA_Percent,Profit_Per_Staff,CASA_Percent,CD_Ratio,Business_Per_Staff,Staff_Count
+B001,Hyderabad Main,South,520.5,500,410.4,420,2.1,6.2,44,78,92,48
+B002,Bengaluru Central,South,430.2,450,360.8,380,3.8,4.1,36,81,75,42
+B003,Mumbai Fort,West,610.8,600,520.2,540,1.9,7.3,52,85,105,55
+B004,Chennai Anna Nagar,South,455.3,470,390.6,400,4.2,3.9,34,76,70,46
+B005,Delhi Connaught,North,590.1,580,505.9,520,2.6,6.0,48,82,98,50
