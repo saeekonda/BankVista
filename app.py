@@ -1,6 +1,9 @@
 """
-BankVista AI - Fixed Visibility Version
-All text colors fixed for proper contrast and readability
+BankVista AI - Enhanced Edition
+- Smart NLP Intent Layer (understands layman terms)
+- Follow-up context & entity memory
+- Branch Comparison, Heatmap, Anomaly Detection
+- Staff Efficiency, Zone Analytics, Target Gap Tracker
 """
 
 import streamlit as st
@@ -8,15 +11,18 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 from datetime import date, datetime
 import io
 import os
+import re
 from dotenv import load_dotenv
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 import json
+import difflib
 
 load_dotenv()
 
@@ -27,1474 +33,1545 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# FIXED CSS - ALL TEXT NOW VISIBLE
+# ─────────────────────────────────────────────
+# CSS
+# ─────────────────────────────────────────────
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap');
-    
-    /* Global Styles */
-    .main {
-        background: #f0f2f5;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Hero Section */
+
+    .main { background: #f0f2f5; font-family: 'Inter', sans-serif; }
+
+    /* Hero */
     .hero-container {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 4rem 2rem;
-        border-radius: 24px;
-        margin-bottom: 2rem;
-        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
-        position: relative;
-        overflow: hidden;
+        padding: 3.5rem 2rem; border-radius: 24px; margin-bottom: 2rem;
+        box-shadow: 0 20px 60px rgba(102,126,234,0.3);
+        position: relative; overflow: hidden;
     }
-    
     .hero-container::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+        content:''; position:absolute; top:-50%; right:-50%;
+        width:200%; height:200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
         background-size: 50px 50px;
         animation: grid-move 20s linear infinite;
     }
-    
-    @keyframes grid-move {
-        0% { transform: translate(0, 0); }
-        100% { transform: translate(50px, 50px); }
-    }
-    
+    @keyframes grid-move { 0%{transform:translate(0,0)} 100%{transform:translate(50px,50px)} }
+
     .main-title {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 4.5rem;
-        font-weight: 800;
-        color: white;
-        text-align: center;
-        margin-bottom: 1rem;
-        position: relative;
-        z-index: 1;
-        text-shadow: 0 2px 20px rgba(0,0,0,0.2);
-        letter-spacing: -2px;
+        font-family:'Space Grotesk',sans-serif; font-size:3.8rem; font-weight:800;
+        color:white; text-align:center; margin-bottom:0.8rem;
+        position:relative; z-index:1; text-shadow:0 2px 20px rgba(0,0,0,0.2); letter-spacing:-2px;
     }
-    
-    .subtitle {
-        font-size: 1.4rem;
-        color: white;
-        text-align: center;
-        font-weight: 500;
-        margin-bottom: 1.5rem;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .feature-pills {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 1rem;
-        margin-top: 2rem;
-        position: relative;
-        z-index: 1;
-    }
-    
+    .subtitle { font-size:1.3rem; color:rgba(255,255,255,0.92); text-align:center; font-weight:500; margin-bottom:1rem; position:relative; z-index:1; }
+    .feature-pills { display:flex; flex-wrap:wrap; justify-content:center; gap:0.8rem; margin-top:1.5rem; position:relative; z-index:1; }
     .feature-pill {
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        padding: 0.6rem 1.2rem;
-        border-radius: 25px;
-        color: white;
-        font-weight: 600;
-        font-size: 0.9rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
+        background:rgba(255,255,255,0.18); backdrop-filter:blur(10px);
+        border:1px solid rgba(255,255,255,0.3); padding:0.5rem 1.1rem;
+        border-radius:25px; color:white; font-weight:600; font-size:0.85rem;
+        display:inline-flex; align-items:center; gap:0.4rem; transition:all 0.3s ease;
     }
-    
-    .feature-pill:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    }
-    
-    /* Stats Cards */
+    .feature-pill:hover { background:rgba(255,255,255,0.28); transform:translateY(-2px); }
+
+    /* Cards */
     .stat-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        padding: 2rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        background:white; border:1px solid #e5e7eb; border-radius:16px;
+        padding:1.6rem; text-align:center; transition:all 0.3s ease;
+        box-shadow:0 4px 6px rgba(0,0,0,0.05);
     }
-    
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15);
-        border-color: #667eea;
-    }
-    
+    .stat-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(102,126,234,0.15); border-color:#667eea; }
     .stat-value {
-        font-size: 2.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
+        font-size:2.2rem; font-weight:800;
+        background:linear-gradient(135deg,#06b6d4,#3b82f6);
+        -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+        margin-bottom:0.4rem;
     }
-    
-    .stat-label {
-        color: #6b7280;
-        font-size: 0.9rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .stat-trend {
-        color: #10b981;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin-top: 0.5rem;
-    }
-    
-    /* Section Headers */
+    .stat-label { color:#6b7280; font-size:0.82rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; }
+    .stat-trend { color:#10b981; font-size:0.8rem; font-weight:600; margin-top:0.4rem; }
+
     .section-header {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 2rem;
-        font-weight: 700;
-        color: #1f2937;
-        border-bottom: 3px solid #667eea;
-        padding-bottom: 0.75rem;
-        margin: 2rem 0 1.5rem 0;
+        font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700;
+        color:#1f2937; border-bottom:3px solid #667eea; padding-bottom:0.6rem; margin:1.5rem 0 1rem 0;
     }
-    
-    /* Feature Cards */
+
     .feature-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 20px;
-        padding: 2rem;
-        margin: 1rem 0;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        background:white; border:1px solid #e5e7eb; border-radius:20px;
+        padding:1.8rem; margin:0.8rem 0; transition:all 0.3s ease;
+        box-shadow:0 4px 6px rgba(0,0,0,0.05);
     }
-    
-    .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
-        border-color: #667eea;
-    }
-    
-    .feature-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-    }
-    
-    .feature-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 0.5rem;
-    }
-    
-    .feature-desc {
-        color: #6b7280;
-        font-size: 1rem;
-        line-height: 1.6;
-    }
-    
-    /* AI Chat Container */
+    .feature-card:hover { transform:translateY(-4px); box-shadow:0 12px 35px rgba(102,126,234,0.18); border-color:#667eea; }
+    .feature-icon { font-size:2.5rem; margin-bottom:0.8rem; }
+    .feature-title { font-size:1.3rem; font-weight:700; color:#1f2937; margin-bottom:0.4rem; }
+    .feature-desc { color:#6b7280; font-size:0.95rem; line-height:1.6; }
+
+    /* Chat */
     .ai-chat-container {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 20px;
-        padding: 2rem;
-        margin: 1rem 0;
-        min-height: 400px;
-        max-height: 600px;
-        overflow-y: auto;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        background:white; border:1px solid #e5e7eb; border-radius:20px;
+        padding:1.5rem; margin:0.8rem 0; min-height:300px; max-height:520px;
+        overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.05);
     }
-    
     .user-message {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 18px 18px 4px 18px;
-        margin: 0.75rem 0;
-        max-width: 80%;
-        margin-left: auto;
-        box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
-        font-weight: 500;
+        background:linear-gradient(135deg,#06b6d4,#3b82f6); color:white;
+        padding:0.9rem 1.3rem; border-radius:18px 18px 4px 18px;
+        margin:0.6rem 0; max-width:80%; margin-left:auto;
+        box-shadow:0 4px 12px rgba(6,182,212,0.3); font-weight:500;
     }
-    
     .ai-message {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        color: #1f2937;
-        padding: 1rem 1.5rem;
-        border-radius: 18px 18px 18px 4px;
-        margin: 0.75rem 0;
-        max-width: 80%;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        line-height: 1.6;
+        background:#f9fafb; border:1px solid #e5e7eb; color:#1f2937;
+        padding:0.9rem 1.3rem; border-radius:18px 18px 18px 4px;
+        margin:0.6rem 0; max-width:82%; box-shadow:0 2px 4px rgba(0,0,0,0.05); line-height:1.6;
     }
-    
-    /* Alert Boxes */
-    .alert-info {
-        background: #dbeafe;
-        border-left: 4px solid #2196f3;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-radius: 8px;
-        color: #1e40af;
-    }
-    
-    .alert-watch {
-        background: #fef3c7;
-        border-left: 4px solid #ffc107;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-radius: 8px;
-        color: #92400e;
-    }
-    
-    .alert-strength {
-        background: #d1fae5;
-        border-left: 4px solid #4caf50;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-radius: 8px;
-        color: #065f46;
-    }
-    
+    .typing-indicator { color:#9ca3af; font-style:italic; padding:0.5rem 1rem; }
+
+    /* Alerts */
+    .alert-info { background:#dbeafe; border-left:4px solid #3b82f6; padding:1.2rem; margin:0.6rem 0; border-radius:8px; color:#1e40af; }
+    .alert-watch { background:#fef3c7; border-left:4px solid #f59e0b; padding:1.2rem; margin:0.6rem 0; border-radius:8px; color:#92400e; }
+    .alert-strength { background:#d1fae5; border-left:4px solid #10b981; padding:1.2rem; margin:0.6rem 0; border-radius:8px; color:#065f46; }
+    .alert-anomaly { background:#fce7f3; border-left:4px solid #ec4899; padding:1.2rem; margin:0.6rem 0; border-radius:8px; color:#831843; }
+
     /* Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        padding: 0.75rem 2rem;
-        font-weight: 700;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+        background:linear-gradient(135deg,#06b6d4,#3b82f6); color:white; border:none;
+        border-radius:12px; padding:0.7rem 1.8rem; font-weight:700; font-size:0.95rem;
+        transition:all 0.3s ease; box-shadow:0 4px 12px rgba(6,182,212,0.3);
     }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
-    }
-    
-    /* Download Section */
+    .stButton > button:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(6,182,212,0.4); }
+
     .download-section {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        padding: 2.5rem;
-        border-radius: 20px;
-        margin: 2rem 0;
-        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        background:linear-gradient(135deg,#10b981,#059669); color:white;
+        padding:2rem; border-radius:20px; margin:1.5rem 0;
+        box-shadow:0 10px 30px rgba(16,185,129,0.3);
     }
-    
-    .download-section h3 {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        color: white;
-    }
-    
-    .download-section p, .download-section li {
-        color: white;
-    }
-    
-    /* Metric Cards */
+    .download-section h3 { font-size:1.6rem; font-weight:700; margin-bottom:0.8rem; color:white; }
+    .download-section p, .download-section li { color:white; }
+
     .metric-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        padding: 1.5rem;
-        border-radius: 16px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin: 0.5rem 0;
-        transition: all 0.3s ease;
+        background:white; border:1px solid #e5e7eb; padding:1.3rem;
+        border-radius:16px; box-shadow:0 4px 6px rgba(0,0,0,0.05);
+        margin:0.4rem 0; transition:all 0.3s ease;
     }
-    
-    .metric-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 35px rgba(102, 126, 234, 0.15);
+    .metric-card:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(102,126,234,0.15); }
+    .metric-card p { color:#1f2937; }
+
+    /* Compare */
+    .compare-card {
+        background:white; border:2px solid #e5e7eb; border-radius:16px;
+        padding:1.5rem; transition:all 0.3s ease;
     }
-    
-    .metric-card p {
-        color: #1f2937;
-    }
-    
-    /* Scrollbar Styling */
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 5px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-        border-radius: 5px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%);
-    }
-    
-    /* Text Colors - FIXED */
-    h1, h2, h3, h4, h5, h6 {
-        color: #1f2937 !important;
-    }
-    
-    p, span, div, label {
-        color: #374151 !important;
-    }
-    
-    .stMarkdown {
-        color: #374151 !important;
-    }
-    
-    /* Tab Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: white;
-        padding: 0.5rem;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background: transparent;
-        border-radius: 8px;
-        color: #6b7280;
-        font-weight: 600;
-        padding: 0.75rem 1.5rem;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-        color: white !important;
-    }
-    
-    /* Input Fields */
-    .stTextInput > div > div > input {
-        background: white;
-        border: 1px solid #d1d5db;
-        border-radius: 12px;
-        color: #1f2937;
-        padding: 0.75rem;
-    }
-    
-    .stTextInput > div > div > input:focus {
-        border-color: #06b6d4;
-        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
-    }
-    
-    /* Select Box */
-    .stSelectbox > div > div {
-        background: white;
-        border: 1px solid #d1d5db;
-        border-radius: 12px;
-    }
-    
+    .compare-card:hover { border-color:#667eea; box-shadow:0 8px 25px rgba(102,126,234,0.15); }
+    .compare-header { font-weight:700; font-size:1.2rem; color:#1f2937; border-bottom:2px solid #667eea; padding-bottom:0.5rem; margin-bottom:1rem; }
+    .compare-row { display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #f3f4f6; }
+    .compare-row:last-child { border-bottom:none; }
+    .compare-label { color:#6b7280; font-weight:500; }
+    .compare-value { font-weight:700; color:#1f2937; }
+
+    /* Heatmap legend */
+    .heatmap-legend { display:flex; gap:1rem; justify-content:center; margin:0.8rem 0; flex-wrap:wrap; }
+    .legend-item { display:flex; align-items:center; gap:0.3rem; font-size:0.82rem; font-weight:600; color:#374151; }
+    .legend-swatch { width:22px; height:22px; border-radius:4px; }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] { gap:6px; background:white; padding:0.4rem; border-radius:12px; border:1px solid #e5e7eb; }
+    .stTabs [data-baseweb="tab"] { background:transparent; border-radius:8px; color:#6b7280; font-weight:600; padding:0.65rem 1.2rem; }
+    .stTabs [aria-selected="true"] { background:linear-gradient(135deg,#06b6d4,#3b82f6); color:white !important; }
+
+    /* Inputs */
+    .stTextInput > div > div > input { background:white; border:1px solid #d1d5db; border-radius:12px; color:#1f2937; padding:0.7rem; }
+    .stTextInput > div > div > input:focus { border-color:#06b6d4; box-shadow:0 0 0 3px rgba(6,182,212,0.1); }
+    .stSelectbox > div > div { background:white; border:1px solid #d1d5db; border-radius:12px; }
+
     /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background: #f9fafb;
-    }
-    
-    /* Info boxes in sidebar */
-    section[data-testid="stSidebar"] h4 {
-        color: #1f2937 !important;
-    }
-    
-    section[data-testid="stSidebar"] p {
-        color: #374151 !important;
-    }
+    section[data-testid="stSidebar"] { background:#f9fafb; }
+
+    /* Global text */
+    h1,h2,h3,h4,h5,h6 { color:#1f2937 !important; }
+    p, span, div, label { color:#374151 !important; }
+    .stMarkdown { color:#374151 !important; }
+
+    ::-webkit-scrollbar { width:8px; height:8px; }
+    ::-webkit-scrollbar-track { background:#f1f1f1; border-radius:4px; }
+    ::-webkit-scrollbar-thumb { background:linear-gradient(135deg,#06b6d4,#3b82f6); border-radius:4px; }
 </style>
 """, unsafe_allow_html=True)
 
-# [REST OF THE CODE REMAINS EXACTLY THE SAME - copying from the original]
+
+# ─────────────────────────────────────────────
+# SMART NLP / INTENT ENGINE
+# ─────────────────────────────────────────────
+class SmartIntentEngine:
+    """
+    Maps layman / casual terms → banking intents.
+    Handles typos, partial branch names, follow-ups, and implicit references.
+    """
+
+    # Synonym dictionary: intent → list of casual/layman phrases
+    INTENT_MAP = {
+        "npa": [
+            "npa", "bad loan", "bad loans", "defaulter", "defaulters", "default",
+            "non performing", "non-performing", "risky loan", "risky loans",
+            "problematic loan", "stuck loan", "stuck loans", "recovery",
+            "which loans are bad", "loan problems", "loan trouble", "troubled loans",
+            "which branches have problems", "problem branches", "red flag",
+            "red flags", "worry", "worrying", "concerning", "high risk",
+            "danger", "dangerous loans", "bad debt", "loss", "losses",
+            "unpaid loans", "overdue", "delayed payment", "delayed payments",
+            "loan default", "what loans are stuck", "bad assets"
+        ],
+        "casa": [
+            "casa", "current account", "savings account", "current & savings",
+            "cheap deposits", "low cost deposits", "low-cost deposits",
+            "current savings", "where can we get more deposits",
+            "how to increase deposits", "deposit growth", "deposit opportunities",
+            "savings", "current account savings", "casa ratio",
+            "low cost fund", "sticky deposits", "deposit mix"
+        ],
+        "compare": [
+            "compare", "comparison", "versus", "vs", "side by side",
+            "how do branches compare", "which is better", "better branch",
+            "best branch", "top branch", "top branches", "ranking",
+            "rank", "who is leading", "leader", "leaders",
+            "best performing", "top performing", "compare branches",
+            "pit against", "head to head"
+        ],
+        "top_performers": [
+            "top", "best", "star", "star performers", "success", "successful",
+            "who is doing well", "doing great", "excellent branches",
+            "champions", "leaders", "winner", "winners",
+            "high performers", "what are they doing right", "learn from best"
+        ],
+        "weak_branches": [
+            "weak", "weakest", "worst", "struggling", "behind",
+            "lagging", "need help", "need support", "underperforming",
+            "low performers", "who needs help", "which branch is behind",
+            "falling behind", "not meeting targets", "below target"
+        ],
+        "deposits": [
+            "deposit", "deposits", "total deposits", "how much deposits",
+            "deposit target", "deposit achievement", "deposit performance",
+            "money in bank", "how much money", "collection"
+        ],
+        "advances": [
+            "advance", "advances", "loans given", "loan disbursement",
+            "credit", "lending", "how much loans", "advance target",
+            "loan performance", "loan achievement"
+        ],
+        "staff": [
+            "staff", "employees", "team", "how many people", "staff efficiency",
+            "productivity", "profit per staff", "business per staff",
+            "per employee", "team performance", "workforce"
+        ],
+        "target": [
+            "target", "goal", "goals", "achievement", "how close to target",
+            "are we meeting target", "target gap", "gap", "how far from target",
+            "target progress", "progress", "on track", "are we on track"
+        ],
+        "anomaly": [
+            "anomaly", "anomalies", "odd", "strange", "unusual",
+            "something wrong", "anything weird", "outlier", "outliers",
+            "abnormal", "unexpected", "flag", "flagged", "suspicious"
+        ],
+        "zone": [
+            "zone", "zones", "region", "regions", "telangana", "andhra",
+            "ap", "zone wise", "zone-wise", "by zone", "region wise"
+        ],
+        "overview": [
+            "overview", "summary", "give me summary", "what's going on",
+            "status", "how things are", "overall", "big picture",
+            "at a glance", "dashboard", "general", "how are we doing",
+            "health", "health check", "how is bank doing"
+        ],
+        "help": [
+            "help", "what can you do", "features", "menu", "options",
+            "commands", "how to use", "guide", "instructions"
+        ],
+    }
+
+    FOLLOW_UP_PATTERNS = [
+        r"^(tell me more|elaborate|explain more|more details|go on|continue|say more|detail)$",
+        r"^(yes|yeah|yep|ok|okay|sure|go ahead|please)$",
+        r"^(what about (that|this|it|them|him|her))$",
+        r"^(and (that|this|the other one))$",
+        r"^(which (one|branch))$",
+        r"^(show me|show)$",
+    ]
+
+    def __init__(self, df):
+        self.df = df
+        self.branch_names = df['Branch_Name'].tolist()
+        self.branch_names_lower = [n.lower() for n in self.branch_names]
+
+    # ── Public API ──
+    def detect_intent(self, text: str) -> str:
+        text_clean = text.strip().lower()
+
+        # 1. Check follow-up
+        if self._is_follow_up(text_clean):
+            return "FOLLOW_UP"
+
+        # 2. Check for branch mention
+        branch = self._extract_branch(text_clean)
+        if branch:
+            return f"BRANCH:{branch}"
+
+        # 3. Intent matching
+        scores = {}
+        tokens = set(re.findall(r'\w+', text_clean))
+        for intent, keywords in self.INTENT_MAP.items():
+            score = 0
+            for kw in keywords:
+                if kw in text_clean:
+                    score += (2 if len(kw.split()) > 1 else 1)  # multi-word bonus
+                elif kw in tokens:
+                    score += 1
+            # fuzzy match on tokens
+            for token in tokens:
+                if len(token) >= 4:
+                    for kw in keywords:
+                        if difflib.SequenceMatcher(None, token, kw).ratio() > 0.82:
+                            score += 0.5
+            scores[intent] = score
+
+        if scores:
+            best = max(scores, key=scores.get)
+            if scores[best] > 0:
+                return best
+
+        return "UNKNOWN"
+
+    def extract_branch_from_text(self, text: str):
+        """Return best-matching branch name or None"""
+        return self._extract_branch(text.strip().lower())
+
+    # ── Helpers ──
+    def _is_follow_up(self, text: str) -> bool:
+        for pat in self.FOLLOW_UP_PATTERNS:
+            if re.match(pat, text):
+                return True
+        return False
+
+    def _extract_branch(self, text: str):
+        # Exact match
+        for name in self.branch_names:
+            if name.lower() in text:
+                return name
+        # Fuzzy
+        best_match = difflib.get_close_matches(text, self.branch_names_lower, n=1, cutoff=0.6)
+        if best_match:
+            idx = self.branch_names_lower.index(best_match[0])
+            return self.branch_names[idx]
+        # Token-level partial
+        tokens = text.split()
+        for token in tokens:
+            if len(token) >= 4:
+                matches = difflib.get_close_matches(token, self.branch_names_lower, n=1, cutoff=0.7)
+                if matches:
+                    idx = self.branch_names_lower.index(matches[0])
+                    return self.branch_names[idx]
+        return None
+
+
+# ─────────────────────────────────────────────
+# AI ASSISTANT  (with SmartIntentEngine)
+# ─────────────────────────────────────────────
 class AIAssistant:
-    """AI Assistant with OpenAI GPT-4o"""
-    
     def __init__(self, df):
         self.df = df
         self.conversation_history = []
-        
+        self.intent_engine = SmartIntentEngine(df)
+        # Context memory
+        self.last_intent = None
+        self.last_branch = None
+        self.last_response = ""
+
         api_key = os.getenv('OPENAI_API_KEY')
         if api_key:
             try:
                 from openai import OpenAI
                 self.client = OpenAI(api_key=api_key)
                 self.api_available = True
-                print("✅ OpenAI API connected successfully!")
             except ImportError:
-                print("⚠️ Install: pip install openai")
                 self.client = None
                 self.api_available = False
         else:
-            print("⚠️ OPENAI_API_KEY not found in .env")
             self.client = None
             self.api_available = False
-    
+
+    # ── Main entry ──
     def chat(self, user_query: str) -> str:
-        """Main chat function"""
-        data_context = self._prepare_data_context()
-        system_prompt = self._create_supportive_prompt(data_context)
-        
+        intent = self.intent_engine.detect_intent(user_query)
+
+        # Resolve follow-ups using context
+        if intent == "FOLLOW_UP":
+            intent = self.last_intent or "overview"
+
+        # Branch mention → store & adjust intent
+        if intent.startswith("BRANCH:"):
+            branch_name = intent.split(":", 1)[1]
+            self.last_branch = branch_name
+            intent = "branch_detail"
+        else:
+            # Check if there's a branch embedded even if intent is something else
+            found_branch = self.intent_engine.extract_branch_from_text(user_query)
+            if found_branch:
+                self.last_branch = found_branch
+
+        # Try GPT-4o first
         if self.api_available and self.client:
             try:
-                response = self._call_openai_api(system_prompt, user_query)
-            except Exception as e:
-                print(f"API Error: {e}")
-                response = self._fallback_response(user_query)
-        else:
-            response = self._fallback_response(user_query)
-        
-        self.conversation_history.append({
-            'user': user_query,
-            'assistant': response,
-            'timestamp': datetime.now()
-        })
-        
+                response = self._call_openai(user_query, intent)
+                self._store(user_query, response, intent)
+                return response
+            except Exception:
+                pass
+
+        # Fallback (local)
+        response = self._local_response(intent, user_query)
+        self._store(user_query, response, intent)
         return response
-    
-    def _create_supportive_prompt(self, data_context: str) -> str:
-        """Supportive coaching system prompt"""
-        return f"""You are BankVista AI, a supportive banking performance coach.
+
+    def _store(self, query, response, intent):
+        self.conversation_history.append({'user': query, 'assistant': response, 'timestamp': datetime.now()})
+        self.last_intent = intent
+        self.last_response = response
+
+    # ── OpenAI call ──
+    def _call_openai(self, user_query, resolved_intent):
+        data_context = self._prepare_data_context()
+        system = f"""You are BankVista AI, a supportive banking performance coach.
 
 COMMUNICATION RULES:
-✓ Start with strengths
-✓ Provide context
-✓ Use supportive language: "you might consider", "one option is"
-✓ Acknowledge constraints
-✓ Frame as opportunities
-✓ Offer 2-3 options
-✓ End with encouragement
+✓ Start with strengths. Provide context. Use "you might consider", "one option is".
+✓ Acknowledge constraints. Frame as opportunities. Offer 2-3 options. End with encouragement.
+✗ NEVER use: critical, severe, urgent, failure, worst, must, required.
+✗ No rankings or judgmental comparisons. No commands.
 
-✗ NEVER use: critical, severe, urgent, failure, worst, must, required
-✗ No rankings or judgmental comparisons
-✗ No commands
+IMPORTANT – You understand casual / layman language:
+- "bad loans" = NPA (Non-Performing Assets)
+- "cheap deposits" = CASA (Current Account Savings Account)
+- "stuck loans" = NPA
+- "how far from target" = target gap analysis
+- "weird numbers" = anomaly detection
+- "who is doing well" = top performers
 
-METRIC LANGUAGE:
-- NPA: "needs attention" not "critical"
-- Targets: "room for growth" not "failed"
-- Comparisons: "learning from others" not "worst performer"
+The user's detected intent is: {resolved_intent}
+Last referenced branch (if any): {self.last_branch}
 
 CURRENT DATA:
 {data_context}
 
-Be supportive, contextual, and helpful."""
+Respond naturally and supportively. If the user asked something vague, give a helpful overview and ask a gentle follow-up."""
 
-    def _prepare_data_context(self) -> str:
-        """Prepare data context"""
-        context = []
-        context.append(f"Total Branches: {len(self.df)}")
-        context.append(f"Total Deposits: ₹{self.df['Total_Deposits'].sum():.2f} Cr")
-        context.append(f"Avg NPA: {self.df['NPA_Percent'].mean():.2f}%")
-        context.append(f"Avg CASA: {self.df['CASA_Percent'].mean():.2f}%\n")
-        
-        for _, row in self.df.iterrows():
-            context.append(
-                f"{row['Branch_Name']}: Deposits ₹{row['Total_Deposits']:.1f}Cr, "
-                f"NPA {row['NPA_Percent']:.1f}%, CASA {row['CASA_Percent']:.1f}%"
-            )
-        
-        return "\n".join(context)
-    
-    def _call_openai_api(self, system_prompt: str, user_query: str) -> str:
-        """Call OpenAI API"""
-        messages = [{"role": "system", "content": system_prompt}]
-        
-        for msg in self.conversation_history[-3:]:
+        messages = [{"role": "system", "content": system}]
+        for msg in self.conversation_history[-4:]:
             messages.append({"role": "user", "content": msg['user']})
             messages.append({"role": "assistant", "content": msg['assistant']})
-        
         messages.append({"role": "user", "content": user_query})
-        
-        response = self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            max_tokens=1500,
-            temperature=0.7
-        )
-        
-        return response.choices[0].message.content
-    
-    def _fallback_response(self, user_query: str) -> str:
-        """Fallback responses"""
-        query = user_query.lower()
-        
-        if 'npa' in query:
-            high_npa = self.df.nlargest(3, 'NPA_Percent')
-            response = "**NPA Overview**\n\n"
-            response += f"Organization average: {self.df['NPA_Percent'].mean():.2f}%\n\n"
-            response += "**Branches where attention could help:**\n\n"
-            
-            for _, row in high_npa.iterrows():
-                npa = row['NPA_Percent']
-                desc = "needs attention" if npa > 6 else "slightly elevated" if npa > 3 else "healthy"
-                response += f"**{row['Branch_Name']}**: {npa:.2f}% - {desc}\n"
-            
-            response += "\n**Approaches:** Early intervention, understand challenges, focused effort\n"
-            response += "*Timeline: 1-2% improvement in 60-90 days is valuable*"
-            
-        elif 'casa' in query:
-            low_casa = self.df.nsmallest(3, 'CASA_Percent')
-            response = "**CASA Opportunities**\n\n"
-            response += f"Org avg: {self.df['CASA_Percent'].mean():.1f}%\n\n"
-            
-            for _, row in low_casa.iterrows():
-                response += f"**{row['Branch_Name']}**: {row['CASA_Percent']:.1f}%\n"
-            
-            response += "\n**Ideas:** College partnerships, business accounts, incremental growth"
-            
-        elif 'compare' in query or 'top' in query:
-            response = "**Learning from Success Patterns**\n\n"
-            self.df['score'] = (self.df['Total_Deposits'] / self.df['Deposit_Target'] * 50)
-            strong = self.df.nlargest(3, 'score')
-            
-            for _, row in strong.iterrows():
-                response += f"**{row['Branch_Name']}**: Strong deposit performance\n"
-            
-            response += "\n*Every branch has unique strengths*"
-            
+
+        resp = self.client.chat.completions.create(model="gpt-4o", messages=messages, max_tokens=1500, temperature=0.7)
+        return resp.choices[0].message.content
+
+    # ── Local fallback responses (intent-driven) ──
+    def _local_response(self, intent, raw_query):
+        df = self.df
+
+        if intent == "npa":
+            return self._resp_npa()
+        elif intent == "casa":
+            return self._resp_casa()
+        elif intent == "compare" or intent == "top_performers":
+            return self._resp_compare()
+        elif intent == "weak_branches":
+            return self._resp_weak()
+        elif intent == "deposits":
+            return self._resp_deposits()
+        elif intent == "advances":
+            return self._resp_advances()
+        elif intent == "staff":
+            return self._resp_staff()
+        elif intent == "target":
+            return self._resp_target()
+        elif intent == "anomaly":
+            return self._resp_anomaly()
+        elif intent == "zone":
+            return self._resp_zone()
+        elif intent == "branch_detail":
+            return self._resp_branch(self.last_branch)
+        elif intent == "overview":
+            return self._resp_overview()
         else:
-            response = "**Hello! I can help with:**\n"
-            response += "• Branch performance insights\n"
-            response += "• CASA opportunities\n"
-            response += "• NPA analysis\n"
-            response += "• Success patterns\n\n"
-            response += "*Try: 'Which branches need NPA attention?'*"
-        
-        return response
-    
-    def export_conversation(self) -> str:
-        """Export conversation as JSON"""
-        return json.dumps([
-            {
-                'user': msg['user'],
-                'assistant': msg['assistant'],
-                'timestamp': msg['timestamp'].isoformat()
-            }
-            for msg in self.conversation_history
-        ], indent=2)
+            return self._resp_help()
+
+    # ── Individual response builders ──
+    def _resp_npa(self):
+        high = self.df.nlargest(3, 'NPA_Percent')
+        avg = self.df['NPA_Percent'].mean()
+        r = f"📊 **NPA (Bad Loan) Overview**\n\nOrganization average: **{avg:.2f}%**\n\n"
+        r += "Here are the branches where a bit of extra attention could make a big difference:\n\n"
+        for _, row in high.iterrows():
+            tag = "🔴 needs attention" if row['NPA_Percent'] > 6 else "🟡 slightly elevated"
+            r += f"• **{row['Branch_Name']}** — {row['NPA_Percent']:.2f}% {tag}\n"
+        r += "\n💡 **Some ideas:** Early outreach to borrowers, understanding local challenges, and focused recovery efforts can help. A 1–2% drop in 60–90 days would be a great win!\n"
+        r += "\n*Feel free to ask about a specific branch for a deeper look!*"
+        return r
+
+    def _resp_casa(self):
+        low = self.df.nsmallest(3, 'CASA_Percent')
+        avg = self.df['CASA_Percent'].mean()
+        r = f"💰 **CASA (Cheap Deposit) Opportunities**\n\nOrg average: **{avg:.1f}%**\n\n"
+        r += "These branches have the most room to grow their current & savings accounts:\n\n"
+        for _, row in low.iterrows():
+            r += f"• **{row['Branch_Name']}** — {row['CASA_Percent']:.1f}%\n"
+        r += "\n💡 **Ideas to explore:** Partnering with local colleges, targeting small business owners for current accounts, and running savings campaigns can all help move the needle.\n"
+        return r
+
+    def _resp_compare(self):
+        df = self.df.copy()
+        df['dep_pct'] = (df['Total_Deposits'] / df['Deposit_Target'] * 100).round(1)
+        df['adv_pct'] = (df['Advances'] / df['Advance_Target'] * 100).round(1)
+        df['score'] = (
+            df['dep_pct'].clip(upper=100) * 0.3 +
+            df['adv_pct'].clip(upper=100) * 0.3 +
+            (100 - df['NPA_Percent'] * 10).clip(lower=0) * 0.25 +
+            df['CASA_Percent'] * 0.15
+        )
+        df = df.sort_values('score', ascending=False)
+        r = "🏆 **Branch Performance Ranking**\n\n"
+        for i, (_, row) in enumerate(df.iterrows(), 1):
+            emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"#{i}"
+            r += f"{emoji} **{row['Branch_Name']}** — Score: {row['score']:.1f} | Dep: {row['dep_pct']}% | Adv: {row['adv_pct']}%\n"
+        r += "\n*Every branch brings unique strengths to the table!*"
+        return r
+
+    def _resp_weak(self):
+        df = self.df.copy()
+        df['dep_pct'] = (df['Total_Deposits'] / df['Deposit_Target'] * 100)
+        df['adv_pct'] = (df['Advances'] / df['Advance_Target'] * 100)
+        weak = df[(df['dep_pct'] < 90) | (df['adv_pct'] < 90) | (df['NPA_Percent'] > 5)]
+        r = "🛟 **Branches That Could Use Some Support**\n\n"
+        if weak.empty:
+            return r + "Great news — all branches are performing solidly! 🎉"
+        for _, row in weak.iterrows():
+            issues = []
+            if row['dep_pct'] < 90: issues.append(f"Deposits at {row['dep_pct']:.0f}%")
+            if row['adv_pct'] < 90: issues.append(f"Advances at {row['adv_pct']:.0f}%")
+            if row['NPA_Percent'] > 5: issues.append(f"NPA at {row['NPA_Percent']:.1f}%")
+            r += f"• **{row['Branch_Name']}** — {', '.join(issues)}\n"
+        r += "\n💡 These branches might benefit from targeted support plans. Want details on any specific one?"
+        return r
+
+    def _resp_deposits(self):
+        df = self.df.copy()
+        df['pct'] = (df['Total_Deposits'] / df['Deposit_Target'] * 100).round(1)
+        r = f"🏦 **Deposit Performance**\n\nTotal deposits across all branches: **₹{df['Total_Deposits'].sum():.1f} Cr**\n\n"
+        for _, row in df.sort_values('pct', ascending=False).iterrows():
+            icon = "✅" if row['pct'] >= 100 else "⚠️" if row['pct'] >= 85 else "🔶"
+            r += f"{icon} **{row['Branch_Name']}** — ₹{row['Total_Deposits']:.1f} Cr / ₹{row['Deposit_Target']:.1f} Cr ({row['pct']}%)\n"
+        return r
+
+    def _resp_advances(self):
+        df = self.df.copy()
+        df['pct'] = (df['Advances'] / df['Advance_Target'] * 100).round(1)
+        r = f"📋 **Advances (Loans Given) Performance**\n\nTotal advances: **₹{df['Advances'].sum():.1f} Cr**\n\n"
+        for _, row in df.sort_values('pct', ascending=False).iterrows():
+            icon = "✅" if row['pct'] >= 100 else "⚠️" if row['pct'] >= 85 else "🔶"
+            r += f"{icon} **{row['Branch_Name']}** — ₹{row['Advances']:.1f} Cr / ₹{row['Advance_Target']:.1f} Cr ({row['pct']}%)\n"
+        return r
+
+    def _resp_staff(self):
+        df = self.df
+        r = "👥 **Staff & Efficiency Overview**\n\n"
+        r += f"Total staff across branches: **{df['Staff_Count'].sum()}**\n\n"
+        for _, row in df.sort_values('Business_Per_Staff', ascending=False).iterrows():
+            r += f"• **{row['Branch_Name']}** — {row['Staff_Count']} staff | Business/Staff: ₹{row['Business_Per_Staff']:.1f} Cr | Profit/Staff: ₹{row['Profit_Per_Staff']:.1f} Cr\n"
+        r += "\n💡 Higher business-per-staff often comes from experience and local knowledge!"
+        return r
+
+    def _resp_target(self):
+        df = self.df.copy()
+        df['dep_pct'] = (df['Total_Deposits'] / df['Deposit_Target'] * 100).round(1)
+        df['adv_pct'] = (df['Advances'] / df['Advance_Target'] * 100).round(1)
+        r = "🎯 **Target Achievement Tracker**\n\n"
+        for _, row in df.iterrows():
+            r += f"**{row['Branch_Name']}**\n"
+            r += f"  Deposits: {row['dep_pct']}% {'✅' if row['dep_pct'] >= 100 else '⚠️'} | "
+            r += f"Advances: {row['adv_pct']}% {'✅' if row['adv_pct'] >= 100 else '⚠️'}\n"
+        return r
+
+    def _resp_anomaly(self):
+        df = self.df.copy()
+        anomalies = []
+        for col in ['NPA_Percent', 'CASA_Percent', 'CD_Ratio', 'Profit_Per_Staff']:
+            mean, std = df[col].mean(), df[col].std()
+            if std == 0: continue
+            for _, row in df.iterrows():
+                z = abs(row[col] - mean) / std
+                if z > 1.8:
+                    anomalies.append({'branch': row['Branch_Name'], 'metric': col, 'value': row[col], 'z': z})
+        r = "🔍 **Anomaly Detection Report**\n\n"
+        if not anomalies:
+            return r + "All metrics look normal across branches — no unusual patterns detected! 👍"
+        for a in anomalies:
+            direction = "high" if a['value'] > df[a['metric']].mean() else "low"
+            r += f"• **{a['branch']}** — {a['metric']} is unusually **{direction}** at {a['value']:.2f} (Z-score: {a['z']:.2f})\n"
+        r += "\n💡 These aren't necessarily bad — just worth a quick look to understand the context."
+        return r
+
+    def _resp_zone(self):
+        df = self.df
+        r = "🗺️ **Zone-wise Summary**\n\n"
+        for zone in df['Zone'].unique():
+            zdf = df[df['Zone'] == zone]
+            r += f"### {zone}\n"
+            r += f"  Branches: {len(zdf)} | Total Deposits: ₹{zdf['Total_Deposits'].sum():.1f} Cr | Avg NPA: {zdf['NPA_Percent'].mean():.2f}% | Avg CASA: {zdf['CASA_Percent'].mean():.1f}%\n\n"
+        return r
+
+    def _resp_branch(self, branch_name):
+        if not branch_name:
+            return "Could you tell me which branch you're asking about? I can help with any of them! 😊"
+        row = self.df[self.df['Branch_Name'] == branch_name]
+        if row.empty:
+            return f"I couldn't find a branch matching '{branch_name}'. Could you clarify? Here are the available branches: {', '.join(self.df['Branch_Name'].tolist())}"
+        row = row.iloc[0]
+        dep_pct = row['Total_Deposits'] / row['Deposit_Target'] * 100
+        adv_pct = row['Advances'] / row['Advance_Target'] * 100
+        r = f"📍 **{branch_name} — Full Snapshot**\n\n"
+        r += f"| Metric | Value |\n|---|---|\n"
+        r += f"| Zone | {row['Zone']} |\n"
+        r += f"| Deposits | ₹{row['Total_Deposits']:.1f} Cr ({dep_pct:.1f}% of target) |\n"
+        r += f"| Advances | ₹{row['Advances']:.1f} Cr ({adv_pct:.1f}% of target) |\n"
+        r += f"| NPA | {row['NPA_Percent']:.2f}% |\n"
+        r += f"| CASA | {row['CASA_Percent']:.1f}% |\n"
+        r += f"| Staff | {row['Staff_Count']} |\n"
+        r += f"| Business/Staff | ₹{row['Business_Per_Staff']:.1f} Cr |\n"
+        r += f"| Profit/Staff | ₹{row['Profit_Per_Staff']:.1f} Cr |\n"
+        r += f"| CD Ratio | {row['CD_Ratio']:.1f}% |\n"
+        return r
+
+    def _resp_overview(self):
+        df = self.df
+        total_dep = df['Total_Deposits'].sum()
+        total_adv = df['Advances'].sum()
+        r = f"📊 **BankVista — Overall Health Check**\n\n"
+        r += f"• **{len(df)} branches** across {df['Zone'].nunique()} zone(s)\n"
+        r += f"• Total Deposits: **₹{total_dep:.1f} Cr** | Total Advances: **₹{total_adv:.1f} Cr**\n"
+        r += f"• Avg NPA: **{df['NPA_Percent'].mean():.2f}%** | Avg CASA: **{df['CASA_Percent'].mean():.1f}%**\n"
+        r += f"• Total Staff: **{df['Staff_Count'].sum()}**\n\n"
+        r += "💬 **You can ask me things like:**\n"
+        r += "  • \"Which branches have bad loan problems?\"\n"
+        r += "  • \"How are deposits looking?\"\n"
+        r += "  • \"Anything weird in the numbers?\"\n"
+        r += "  • \"Tell me about Hyderabad Main\"\n"
+        return r
+
+    def _resp_help(self):
+        r = "👋 **Hi! Here's what I understand:**\n\n"
+        r += "🔴 **Bad loans / stuck loans / NPA** → I'll show you NPA analysis\n"
+        r += "💰 **Savings / cheap deposits / CASA** → CASA opportunities\n"
+        r += "🏆 **Who's doing well / best branch** → Top performers\n"
+        r += "🛟 **Struggling / need help / behind** → Branches needing support\n"
+        r += "🎯 **Target / gap / on track** → Target achievement\n"
+        r += "🔍 **Anything weird / odd / anomaly** → Anomaly detection\n"
+        r += "📍 **[Branch name]** → Full branch snapshot\n"
+        r += "🗺️ **Zone / region** → Zone-wise summary\n\n"
+        r += "Just type naturally — I'll figure out what you need! 😊"
+        return r
+
+    def _prepare_data_context(self):
+        lines = [f"Total Branches: {len(self.df)}", f"Total Deposits: ₹{self.df['Total_Deposits'].sum():.2f} Cr",
+                 f"Avg NPA: {self.df['NPA_Percent'].mean():.2f}%", f"Avg CASA: {self.df['CASA_Percent'].mean():.2f}%\n"]
+        for _, row in self.df.iterrows():
+            lines.append(f"{row['Branch_Name']}: Deposits ₹{row['Total_Deposits']:.1f}Cr, NPA {row['NPA_Percent']:.1f}%, CASA {row['CASA_Percent']:.1f}%, Staff {row['Staff_Count']}")
+        return "\n".join(lines)
+
+    def export_conversation(self):
+        return json.dumps([{'user': m['user'], 'assistant': m['assistant'], 'timestamp': m['timestamp'].isoformat()} for m in self.conversation_history], indent=2)
 
 
+# ─────────────────────────────────────────────
+# PREDICTIVE ANALYTICS
+# ─────────────────────────────────────────────
+class PredictiveAnalytics:
+    def __init__(self, df):
+        self.df = df
+
+    def predict_npa_trend(self, branch_name, months=6):
+        branch = self.df[self.df['Branch_Name'] == branch_name].iloc[0]
+        current_npa = branch['NPA_Percent']
+        predictions = []
+        npa = current_npa
+        for m in range(1, months + 1):
+            seasonal = 1.0 + (0.08 if m in [3, 6, 9, 12] else 0)
+            noise = np.random.normal(0, 0.18)
+            npa = max(0, npa * seasonal + noise)
+            predictions.append({'month': m, 'predicted_npa': round(npa, 2), 'confidence': 'high' if m <= 2 else 'medium'})
+        final = predictions[-1]['predicted_npa']
+        risk = 'needs attention' if final > 6 else 'watch' if final > 3 else 'stable'
+        return {'branch': branch_name, 'current_npa': branch['NPA_Percent'], 'predictions': predictions, 'risk_level': risk}
+
+    def predict_target_achievement(self, branch_name):
+        branch = self.df[self.df['Branch_Name'] == branch_name].iloc[0]
+        dep_ach = (branch['Total_Deposits'] / branch['Deposit_Target']) * 100
+        adv_ach = (branch['Advances'] / branch['Advance_Target']) * 100
+
+        def prob(pct):
+            if pct >= 95: return 95
+            elif pct >= 85: return 70 + (pct - 85) * 2.5
+            else: return max(30, 50 + (pct - 75) * 2)
+
+        dp, ap = min(100, prob(dep_ach)), min(100, prob(adv_ach))
+        return {'branch': branch_name, 'deposit_probability': dp, 'advance_probability': ap,
+                'overall_probability': (dp + ap) / 2, 'recommendation': 'On track ✅' if dp > 80 else 'Needs attention ⚠️'}
+
+
+# ─────────────────────────────────────────────
+# ENHANCED BRANCH ANALYZER
+# ─────────────────────────────────────────────
+class EnhancedBankVista:
+    def __init__(self, data):
+        self.data = data
+        self.insights = {'needs_support': [], 'watch_area': [], 'strengths': []}
+
+    def analyze(self):
+        self._check_deposits()
+        self._check_advances()
+        self._check_npa()
+        self._check_casa()
+        grade, score = self._calc_grade()
+        return {'grade': grade, 'score': score, 'insights': self.insights}
+
+    def _check_deposits(self):
+        t, tgt = float(self.data.get('Total_Deposits', 0)), float(self.data.get('Deposit_Target', 1))
+        pct = t / tgt * 100 if tgt else 0
+        bucket = 'needs_support' if pct < 85 else 'watch_area' if pct < 95 else 'strengths'
+        label = 'Growth Opportunity' if pct < 85 else 'Nearly There' if pct < 95 else 'Strong Performance'
+        self.insights[bucket].append({'title': f'Deposits - {label}', 'detail': f'{pct:.1f}% achieved'})
+
+    def _check_advances(self):
+        t, tgt = float(self.data.get('Advances', 0)), float(self.data.get('Advance_Target', 1))
+        pct = t / tgt * 100 if tgt else 0
+        bucket = 'needs_support' if pct < 85 else 'watch_area' if pct < 95 else 'strengths'
+        label = 'Room for Growth' if pct < 85 else 'Good Progress' if pct < 95 else 'Excellent'
+        self.insights[bucket].append({'title': f'Advances - {label}', 'detail': f'{pct:.1f}% achieved'})
+
+    def _check_npa(self):
+        npa = float(self.data.get('NPA_Percent', 0))
+        if npa > 6: self.insights['needs_support'].append({'title': 'NPA - Needs Focused Attention', 'detail': f'{npa:.2f}% (Target: 3%)'})
+        elif npa > 3: self.insights['watch_area'].append({'title': 'NPA - Monitor Closely', 'detail': f'{npa:.2f}%'})
+        else: self.insights['strengths'].append({'title': 'NPA - Healthy', 'detail': f'{npa:.2f}%'})
+
+    def _check_casa(self):
+        casa = float(self.data.get('CASA_Percent', 0))
+        if casa < 30: self.insights['watch_area'].append({'title': 'CASA - Development Opportunity', 'detail': f'{casa:.1f}%'})
+        elif casa >= 40: self.insights['strengths'].append({'title': 'CASA - Excellent', 'detail': f'{casa:.1f}%'})
+
+    def _calc_grade(self):
+        try:
+            d_a, d_t = float(self.data.get('Total_Deposits', 0)), float(self.data.get('Deposit_Target', 1))
+            a_a, a_t = float(self.data.get('Advances', 0)), float(self.data.get('Advance_Target', 1))
+            npa, casa = float(self.data.get('NPA_Percent', 0)), float(self.data.get('CASA_Percent', 0))
+            s = (min(d_a / d_t * 25, 25) if d_t else 0) + (min(a_a / a_t * 25, 25) if a_t else 0)
+            s += 20 if npa <= 3 else (12 if npa <= 6 else 5)
+            s += 10 if casa >= 40 else (5 if casa >= 30 else 2)
+            s = round(s, 1)
+            g = "A+" if s >= 70 else "A" if s >= 60 else "B" if s >= 50 else "C" if s >= 40 else "D"
+            return g, s
+        except:
+            return "N/A", 0
+
+
+# ─────────────────────────────────────────────
+# ANOMALY DETECTOR
+# ─────────────────────────────────────────────
+class AnomalyDetector:
+    def __init__(self, df):
+        self.df = df
+
+    def detect(self):
+        anomalies = []
+        metrics = ['NPA_Percent', 'CASA_Percent', 'CD_Ratio', 'Profit_Per_Staff', 'Business_Per_Staff']
+        for col in metrics:
+            if col not in self.df.columns: continue
+            mean, std = self.df[col].mean(), self.df[col].std()
+            if std == 0: continue
+            for _, row in self.df.iterrows():
+                z = (row[col] - mean) / std
+                if abs(z) > 1.7:
+                    anomalies.append({
+                        'branch': row['Branch_Name'], 'metric': col,
+                        'value': round(row[col], 2), 'z_score': round(z, 2),
+                        'direction': 'HIGH' if z > 0 else 'LOW', 'mean': round(mean, 2)
+                    })
+        return anomalies
+
+
+# ─────────────────────────────────────────────
+# EXCEL EXPORT
+# ─────────────────────────────────────────────
 def create_dynamic_excel(df):
-    """Create dynamic Excel dashboard with dropdown"""
     output = io.BytesIO()
     wb = Workbook()
     wb.remove(wb.active)
-    
-    thin_border = Border(
-        left=Side(style='thin'), right=Side(style='thin'),
-        top=Side(style='thin'), bottom=Side(style='thin')
-    )
-    
-    # Data Sheet (Hidden)
+    thin_border = Border(left=Side('thin'), right=Side('thin'), top=Side('thin'), bottom=Side('thin'))
+
+    # Hidden data sheet
     ws_data = wb.create_sheet("_Data")
     ws_data.sheet_state = 'hidden'
-    
-    headers = df.columns.tolist()
-    for col_idx, header in enumerate(headers, 1):
-        ws_data.cell(1, col_idx, header).font = Font(bold=True)
-    
-    for row_idx, row in enumerate(df.itertuples(index=False), 2):
-        for col_idx, value in enumerate(row, 1):
-            ws_data.cell(row_idx, col_idx, value)
-    
-    # Dashboard Sheet
+    for ci, h in enumerate(df.columns.tolist(), 1):
+        ws_data.cell(1, ci, h).font = Font(bold=True)
+    for ri, row in enumerate(df.itertuples(index=False), 2):
+        for ci, v in enumerate(row, 1):
+            ws_data.cell(ri, ci, v)
+
+    # Dashboard
     ws = wb.create_sheet("Dashboard", 0)
-    
-    # Title
     ws.merge_cells('A1:H1')
-    ws['A1'] = "🤖 BANKVISTA AI - DYNAMIC DASHBOARD"
+    ws['A1'] = "🤖 BANKVISTA AI – DYNAMIC DASHBOARD"
     ws['A1'].font = Font(bold=True, size=16, color="FFFFFF")
     ws['A1'].fill = PatternFill("solid", fgColor="667EEA")
     ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[1].height = 30
-    
-    # Dropdown
+
     ws['A3'] = "Select Branch:"
     ws['A3'].font = Font(bold=True, size=12)
     ws.merge_cells('B3:D3')
     ws['B3'] = df.iloc[0]['Branch_Name']
     ws['B3'].font = Font(size=12, bold=True)
     ws['B3'].fill = PatternFill("solid", fgColor="FFF2CC")
-    
-    # Dropdown validation
+
     last_row = len(df) + 1
-    dv = DataValidation(
-        type="list",
-        formula1=f"=_Data!$B$2:$B${last_row}",
-        allow_blank=False
-    )
+    dv = DataValidation(type="list", formula1=f"=_Data!$B$2:$B${last_row}", allow_blank=False)
     dv.add('B3')
     ws.add_data_validation(dv)
-    
+
     ws['F3'] = "Date:"
     ws['G3'] = date.today().strftime('%d-%b-%Y')
-    
-    # Branch Info
+
+    # Info
     ws['A5'] = "Branch ID:"
-    ws['B5'] = '=INDEX(_Data!$A:$A, MATCH(B3, _Data!$B:$B, 0))'
+    ws['B5'] = '=INDEX(_Data!$A:$A,MATCH(B3,_Data!$B:$B,0))'
     ws['A6'] = "Zone:"
-    ws['B6'] = '=INDEX(_Data!$C:$C, MATCH(B3, _Data!$B:$B, 0))'
-    
-    # Performance Cards
-    ws.merge_cells('A8:B8')
-    ws['A8'] = "GRADE"
-    ws['A8'].font = Font(bold=True, color="FFFFFF")
-    ws['A8'].fill = PatternFill("solid", fgColor="27AE60")
+    ws['B6'] = '=INDEX(_Data!$C:$C,MATCH(B3,_Data!$B:$B,0))'
+
+    # Grade / Score
+    for cell, label, color in [('A8', 'GRADE', '27AE60'), ('D8', 'SCORE', '3498DB')]:
+        ws.merge_cells(f'{cell[0]}8:{cell[0]}9' if cell == 'A8' else 'D8:E8')
+    ws.merge_cells('A8:B8'); ws['A8'] = "GRADE"
+    ws['A8'].font = Font(bold=True, color="FFFFFF"); ws['A8'].fill = PatternFill("solid", fgColor="27AE60")
     ws['A8'].alignment = Alignment(horizontal='center')
-    
     ws.merge_cells('A9:B9')
     ws['A9'] = '=IF(C9>=70,"A+",IF(C9>=60,"A",IF(C9>=50,"B",IF(C9>=40,"C","D"))))'
-    ws['A9'].font = Font(bold=True, size=16)
-    ws['A9'].alignment = Alignment(horizontal='center')
-    
-    ws.merge_cells('D8:E8')
-    ws['D8'] = "SCORE"
-    ws['D8'].font = Font(bold=True, color="FFFFFF")
-    ws['D8'].fill = PatternFill("solid", fgColor="3498DB")
+    ws['A9'].font = Font(bold=True, size=16); ws['A9'].alignment = Alignment(horizontal='center')
+
+    ws.merge_cells('D8:E8'); ws['D8'] = "SCORE"
+    ws['D8'].font = Font(bold=True, color="FFFFFF"); ws['D8'].fill = PatternFill("solid", fgColor="3498DB")
     ws['D8'].alignment = Alignment(horizontal='center')
-    
     ws.merge_cells('D9:E9')
     ws['D9'] = '=ROUND(C9,0)&"/80"'
-    ws['D9'].font = Font(bold=True, size=14)
-    ws['D9'].alignment = Alignment(horizontal='center')
-    
-    # Score calculation (hidden)
-    ws['C9'] = '''=
-    MIN(INDEX(_Data!$D:$D, MATCH(B3,_Data!$B:$B,0)) / 
-        INDEX(_Data!$E:$E, MATCH(B3,_Data!$B:$B,0)) * 25, 25)
-    + MIN(INDEX(_Data!$F:$F, MATCH(B3,_Data!$B:$B,0)) / 
-          INDEX(_Data!$G:$G, MATCH(B3,_Data!$B:$B,0)) * 25, 25)
-    + IF(INDEX(_Data!$H:$H, MATCH(B3,_Data!$B:$B,0))<=3,20,
-         IF(INDEX(_Data!$H:$H, MATCH(B3,_Data!$B:$B,0))<=6,12,5))
-    + IF(INDEX(_Data!$J:$J, MATCH(B3,_Data!$B:$B,0))>=40,10,5)
-    '''
-    
-    # Metrics Table
-    ws.merge_cells('A11:H11')
-    ws['A11'] = "KEY METRICS"
+    ws['D9'].font = Font(bold=True, size=14); ws['D9'].alignment = Alignment(horizontal='center')
+
+    # Hidden score calc
+    ws['C9'] = ('=MIN(INDEX(_Data!$D:$D,MATCH(B3,_Data!$B:$B,0))/INDEX(_Data!$E:$E,MATCH(B3,_Data!$B:$B,0))*25,25)'
+                '+MIN(INDEX(_Data!$F:$F,MATCH(B3,_Data!$B:$B,0))/INDEX(_Data!$G:$G,MATCH(B3,_Data!$B:$B,0))*25,25)'
+                '+IF(INDEX(_Data!$H:$H,MATCH(B3,_Data!$B:$B,0))<=3,20,IF(INDEX(_Data!$H:$H,MATCH(B3,_Data!$B:$B,0))<=6,12,5))'
+                '+IF(INDEX(_Data!$J:$J,MATCH(B3,_Data!$B:$B,0))>=40,10,5)')
+
+    # Metrics table
+    ws.merge_cells('A11:H11'); ws['A11'] = "KEY METRICS"
     ws['A11'].font = Font(bold=True, size=12, color="FFFFFF")
     ws['A11'].fill = PatternFill("solid", fgColor="4472C4")
     ws['A11'].alignment = Alignment(horizontal='center')
-    
-    headers = ['Metric', 'Actual', 'Target', 'Gap', 'Achievement %', 'Status']
-    for i, h in enumerate(headers, 1):
-        c = ws.cell(12, i)
-        c.value = h
-        c.font = Font(bold=True, color="FFFFFF")
-        c.fill = PatternFill("solid", fgColor="5B9BD5")
-        c.alignment = Alignment(horizontal='center')
-        c.border = thin_border
-    
-    metrics = [
-        ("Deposits (Cr)", 4, 5),
-        ("Advances (Cr)", 6, 7),
-        ("NPA %", 8, None),
-        ("CASA %", 10, None),
-    ]
-    
+
+    for i, h in enumerate(['Metric', 'Actual', 'Target', 'Gap', 'Achievement %', 'Status'], 1):
+        c = ws.cell(12, i); c.value = h; c.font = Font(bold=True, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor="5B9BD5"); c.alignment = Alignment(horizontal='center'); c.border = thin_border
+
+    metrics = [("Deposits (Cr)", 4, 5), ("Advances (Cr)", 6, 7), ("NPA %", 8, None), ("CASA %", 10, None)]
     row = 13
-    for metric, actual_col, target_col in metrics:
+    for metric, ac, tc in metrics:
         ws.cell(row, 1, metric)
-        ws.cell(row, 2, f'=INDEX(_Data!${get_column_letter(actual_col)}:${get_column_letter(actual_col)}, MATCH(B3,_Data!$B:$B,0))')
+        acl = get_column_letter(ac)
+        ws.cell(row, 2, f'=INDEX(_Data!${acl}:${acl},MATCH(B3,_Data!$B:$B,0))')
         ws.cell(row, 2).number_format = '#,##0.00'
-        
-        if target_col:
-            ws.cell(row, 3, f'=INDEX(_Data!${get_column_letter(target_col)}:${get_column_letter(target_col)}, MATCH(B3,_Data!$B:$B,0))')
+        if tc:
+            tcl = get_column_letter(tc)
+            ws.cell(row, 3, f'=INDEX(_Data!${tcl}:${tcl},MATCH(B3,_Data!$B:$B,0))')
             ws.cell(row, 3).number_format = '#,##0.00'
-            ws.cell(row, 4, f'=B{row}-C{row}')
-            ws.cell(row, 4).number_format = '#,##0.00'
-            ws.cell(row, 5, f'=B{row}/C{row}')
-            ws.cell(row, 5).number_format = '0.0%'
+            ws.cell(row, 4, f'=B{row}-C{row}'); ws.cell(row, 4).number_format = '#,##0.00'
+            ws.cell(row, 5, f'=B{row}/C{row}'); ws.cell(row, 5).number_format = '0.0%'
             ws.cell(row, 6, f'=IF(B{row}>=C{row},"✅ On Track","⚠️ Gap")')
         else:
             if metric == "NPA %":
-                ws.cell(row, 3, "3.00%")
-                ws.cell(row, 6, f'=IF(B{row}<=3,"✅ Good","⚠️ High")')
-            elif metric == "CASA %":
-                ws.cell(row, 3, "40.00%")
-                ws.cell(row, 6, f'=IF(B{row}>=40,"✅ Excellent","⚠️ Low")')
-        
+                ws.cell(row, 3, "3.00%"); ws.cell(row, 6, f'=IF(B{row}<=3,"✅ Good","⚠️ High")')
+            else:
+                ws.cell(row, 3, "40.00%"); ws.cell(row, 6, f'=IF(B{row}>=40,"✅ Excellent","⚠️ Low")')
         for col in range(1, 7):
-            ws.cell(row, col).border = thin_border
-            ws.cell(row, col).alignment = Alignment(horizontal='center')
-        
+            ws.cell(row, col).border = thin_border; ws.cell(row, col).alignment = Alignment(horizontal='center')
         row += 1
-    
+
     # Instructions
-    ws.merge_cells('A18:H18')
-    ws['A18'] = "💡 INSTRUCTIONS"
+    ws.merge_cells('A18:H18'); ws['A18'] = "💡 INSTRUCTIONS"
     ws['A18'].font = Font(bold=True, size=12, color="FFFFFF")
-    ws['A18'].fill = PatternFill("solid", fgColor="27AE60")
-    ws['A18'].alignment = Alignment(horizontal='center')
-    
-    instructions = [
-        "1. Click dropdown in B3 to select any branch",
-        "2. All metrics update automatically",
-        "3. Works completely offline",
-        "4. Share this file with your team",
-    ]
-    
-    for idx, inst in enumerate(instructions, 19):
-        ws.merge_cells(f'A{idx}:H{idx}')
-        ws[f'A{idx}'] = inst
-        ws[f'A{idx}'].alignment = Alignment(wrap_text=True)
-    
-    # Set column widths
-    for c in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']:
-        ws.column_dimensions[c].width = 15
-    
-    # Summary Sheet
-    ws_summary = wb.create_sheet("All Branches")
-    ws_summary.merge_cells('A1:G1')
-    ws_summary['A1'] = "ALL BRANCHES SUMMARY"
-    ws_summary['A1'].font = Font(bold=True, size=14, color="FFFFFF")
-    ws_summary['A1'].fill = PatternFill("solid", fgColor="1F4E78")
-    ws_summary['A1'].alignment = Alignment(horizontal='center')
-    
-    summary_headers = ['Branch', 'Zone', 'Deposits %', 'Advances %', 'NPA %', 'CASA %', 'Grade']
-    for i, h in enumerate(summary_headers, 1):
-        c = ws_summary.cell(3, i)
-        c.value = h
-        c.font = Font(bold=True, color="FFFFFF")
-        c.fill = PatternFill("solid", fgColor="4472C4")
-        c.alignment = Alignment(horizontal='center')
-        c.border = thin_border
-    
-    for row_idx, row in df.iterrows():
-        r = row_idx + 4
-        ws_summary.cell(r, 1, row['Branch_Name'])
-        ws_summary.cell(r, 2, row['Zone'])
-        ws_summary.cell(r, 3, f"{(row['Total_Deposits']/row['Deposit_Target']*100):.1f}%")
-        ws_summary.cell(r, 4, f"{(row['Advances']/row['Advance_Target']*100):.1f}%")
-        ws_summary.cell(r, 5, f"{row['NPA_Percent']:.2f}%")
-        ws_summary.cell(r, 6, f"{row['CASA_Percent']:.1f}%")
-        
-        # Calculate grade
-        score = (
-            min((row['Total_Deposits']/row['Deposit_Target']*25), 25) +
-            min((row['Advances']/row['Advance_Target']*25), 25) +
-            (20 if row['NPA_Percent'] <= 3 else 12 if row['NPA_Percent'] <= 6 else 5) +
-            (10 if row['CASA_Percent'] >= 40 else 5)
-        )
-        grade = "A+" if score >= 70 else ("A" if score >= 60 else ("B" if score >= 50 else "C"))
-        ws_summary.cell(r, 7, grade)
-        
-        for col in range(1, 8):
-            ws_summary.cell(r, col).border = thin_border
-            ws_summary.cell(r, col).alignment = Alignment(horizontal='center')
-    
-    for i in range(1, 8):
-        ws_summary.column_dimensions[get_column_letter(i)].width = 18
-    
-    wb.save(output)
-    output.seek(0)
+    ws['A18'].fill = PatternFill("solid", fgColor="27AE60"); ws['A18'].alignment = Alignment(horizontal='center')
+    for idx, inst in enumerate(["1. Click dropdown in B3 to select any branch",
+                                 "2. All metrics update automatically via formulas",
+                                 "3. Works completely offline – share freely",
+                                 "4. Check 'All Branches' sheet for full summary"], 19):
+        ws.merge_cells(f'A{idx}:H{idx}'); ws[f'A{idx}'] = inst
+
+    for c in 'ABCDEFGH': ws.column_dimensions[c].width = 16
+
+    # All Branches summary
+    ws_s = wb.create_sheet("All Branches")
+    ws_s.merge_cells('A1:G1'); ws_s['A1'] = "ALL BRANCHES SUMMARY"
+    ws_s['A1'].font = Font(bold=True, size=14, color="FFFFFF")
+    ws_s['A1'].fill = PatternFill("solid", fgColor="1F4E78"); ws_s['A1'].alignment = Alignment(horizontal='center')
+
+    for i, h in enumerate(['Branch', 'Zone', 'Deposits %', 'Advances %', 'NPA %', 'CASA %', 'Grade'], 1):
+        c = ws_s.cell(3, i); c.value = h; c.font = Font(bold=True, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor="4472C4"); c.alignment = Alignment(horizontal='center'); c.border = thin_border
+
+    for ri, row in df.iterrows():
+        r = ri + 4
+        dep_pct = row['Total_Deposits'] / row['Deposit_Target'] * 100
+        adv_pct = row['Advances'] / row['Advance_Target'] * 100
+        score = (min(dep_pct / 100 * 25, 25) + min(adv_pct / 100 * 25, 25) +
+                 (20 if row['NPA_Percent'] <= 3 else 12 if row['NPA_Percent'] <= 6 else 5) +
+                 (10 if row['CASA_Percent'] >= 40 else 5))
+        grade = "A+" if score >= 70 else "A" if score >= 60 else "B" if score >= 50 else "C"
+        vals = [row['Branch_Name'], row['Zone'], f"{dep_pct:.1f}%", f"{adv_pct:.1f}%",
+                f"{row['NPA_Percent']:.2f}%", f"{row['CASA_Percent']:.1f}%", grade]
+        for ci, v in enumerate(vals, 1):
+            ws_s.cell(r, ci, v).border = thin_border
+            ws_s.cell(r, ci).alignment = Alignment(horizontal='center')
+
+    for i in range(1, 8): ws_s.column_dimensions[get_column_letter(i)].width = 18
+    wb.save(output); output.seek(0)
     return output
 
 
-class PredictiveAnalytics:
-    def __init__(self, df):
-        self.df = df
-    
-    def predict_npa_trend(self, branch_name: str, months: int = 3) -> dict:
-        branch = self.df[self.df['Branch_Name'] == branch_name].iloc[0]
-        current_npa = branch['NPA_Percent']
-        
-        predictions = []
-        for month in range(1, months + 1):
-            seasonal_factor = 1.0 + (0.1 if month in [3, 6, 9, 12] else 0)
-            noise = np.random.normal(0, 0.2)
-            predicted = current_npa * seasonal_factor + noise
-            predicted = max(0, predicted)
-            
-            predictions.append({
-                'month': month,
-                'predicted_npa': round(predicted, 2),
-                'confidence': 'high' if month <= 2 else 'medium'
-            })
-            current_npa = predicted
-        
-        final_prediction = predictions[-1]['predicted_npa']
-        risk_level = 'needs attention' if final_prediction > 6 else 'watch' if final_prediction > 3 else 'stable'
-        
-        return {
-            'branch': branch_name,
-            'current_npa': branch['NPA_Percent'],
-            'predictions': predictions,
-            'risk_level': risk_level
-        }
-    
-    def predict_target_achievement(self, branch_name: str) -> dict:
-        branch = self.df[self.df['Branch_Name'] == branch_name].iloc[0]
-        
-        deposit_achievement = (branch['Total_Deposits'] / branch['Deposit_Target']) * 100
-        advance_achievement = (branch['Advances'] / branch['Advance_Target']) * 100
-        
-        def achievement_probability(current_pct):
-            if current_pct >= 95:
-                return 95
-            elif current_pct >= 85:
-                return 70 + (current_pct - 85) * 2.5
-            else:
-                return 50 + (current_pct - 75) * 2
-        
-        dep_prob = min(100, achievement_probability(deposit_achievement))
-        adv_prob = min(100, achievement_probability(advance_achievement))
-        
-        return {
-            'branch': branch_name,
-            'deposit_probability': dep_prob,
-            'advance_probability': adv_prob,
-            'overall_probability': (dep_prob + adv_prob) / 2,
-            'recommendation': 'On track ✅' if dep_prob > 80 else 'Needs attention ⚠️'
-        }
-
-
-class EnhancedBankVista:
-    def __init__(self, data):
-        self.data = data
-        self.insights = {
-            'needs_support': [],
-            'watch_area': [],
-            'strengths': []
-        }
-        self.recommendations = []
-        self.priorities = []
-    
-    def analyze(self):
-        self._check_deposits()
-        self._check_advances()
-        self._check_npa()
-        self._check_casa()
-        self._set_priorities()
-        grade, score = self._calculate_grade()
-        
-        return {
-            'grade': grade,
-            'score': score,
-            'insights': self.insights,
-            'recommendations': self.recommendations,
-            'priorities': self.priorities
-        }
-    
-    def _check_deposits(self):
-        total = float(self.data.get('Total_Deposits', 0))
-        target = float(self.data.get('Deposit_Target', 1))
-        pct = (total/target*100) if target > 0 else 0
-        gap = target - total
-        
-        if pct < 85:
-            self.insights['needs_support'].append({
-                'title': 'Deposits - Growth Opportunity',
-                'detail': f'{pct:.1f}% of target (₹{abs(gap):.1f}Cr opportunity)'
-            })
-        elif pct < 95:
-            self.insights['watch_area'].append({
-                'title': 'Deposits - Nearly There',
-                'detail': f'{pct:.1f}% achieved'
-            })
-        else:
-            self.insights['strengths'].append({
-                'title': 'Deposits - Strong Performance',
-                'detail': f'{pct:.1f}% achieved'
-            })
-    
-    def _check_advances(self):
-        total = float(self.data.get('Advances', 0))
-        target = float(self.data.get('Advance_Target', 1))
-        pct = (total/target*100) if target > 0 else 0
-        
-        if pct < 85:
-            self.insights['needs_support'].append({
-                'title': 'Advances - Room for Growth',
-                'detail': f'{pct:.1f}% of target'
-            })
-        elif pct < 95:
-            self.insights['watch_area'].append({
-                'title': 'Advances - Good Progress',
-                'detail': f'{pct:.1f}% achieved'
-            })
-        else:
-            self.insights['strengths'].append({
-                'title': 'Advances - Excellent',
-                'detail': f'{pct:.1f}% achieved'
-            })
-    
-    def _check_npa(self):
-        npa = float(self.data.get('NPA_Percent', 0))
-        
-        if npa > 6:
-            self.insights['needs_support'].append({
-                'title': 'NPA - Needs Focused Attention',
-                'detail': f'{npa:.2f}% (Target: 3.0%)'
-            })
-        elif npa > 3:
-            self.insights['watch_area'].append({
-                'title': 'NPA - Monitor Closely',
-                'detail': f'{npa:.2f}%'
-            })
-        else:
-            self.insights['strengths'].append({
-                'title': 'NPA - Healthy',
-                'detail': f'{npa:.2f}%'
-            })
-    
-    def _check_casa(self):
-        casa = float(self.data.get('CASA_Percent', 0))
-        
-        if casa < 30:
-            self.insights['watch_area'].append({
-                'title': 'CASA - Development Opportunity',
-                'detail': f'{casa:.1f}% (Target: 40%+)'
-            })
-        elif casa >= 40:
-            self.insights['strengths'].append({
-                'title': 'CASA - Excellent',
-                'detail': f'{casa:.1f}%'
-            })
-    
-    def _set_priorities(self):
-        if not self.priorities:
-            self.priorities.append({
-                'Priority': 'P3',
-                'Area': 'Overall',
-                'Gap': '-',
-                'Action': 'Maintain performance',
-                'Timeline': 'Ongoing'
-            })
-    
-    def _calculate_grade(self):
-        try:
-            d_a = float(self.data.get('Total_Deposits', 0))
-            d_t = float(self.data.get('Deposit_Target', 1))
-            a_a = float(self.data.get('Advances', 0))
-            a_t = float(self.data.get('Advance_Target', 1))
-            npa = float(self.data.get('NPA_Percent', 0))
-            casa = float(self.data.get('CASA_Percent', 0))
-            
-            s1 = min((d_a/d_t*25), 25) if d_t > 0 else 0
-            s2 = min((a_a/a_t*25), 25) if a_t > 0 else 0
-            s3 = 20 if npa <= 3 else (12 if npa <= 6 else 5)
-            s4 = 10 if casa >= 40 else (5 if casa >= 30 else 2)
-            
-            total = round(s1 + s2 + s3 + s4, 1)
-            grade = "A+" if total >= 70 else ("A" if total >= 60 else ("B" if total >= 50 else ("C" if total >= 40 else "D")))
-            
-            return grade, total
-        except:
-            return "N/A", 0
-
-
+# ─────────────────────────────────────────────
+# SAMPLE DATA
+# ─────────────────────────────────────────────
 def sample_data():
     return pd.DataFrame({
-        'Branch_ID': ['B1001', 'B1002', 'B1003', 'B1004', 'B1005', 'B2001', 'B2002', 'B2003'],
-        'Branch_Name': ['Mansoorabad', 'Adilabad', 'Hyderabad Main', 'Secunderabad', 'Warangal', 'Vijayawada', 'Visakhapatnam', 'Guntur'],
+        'Branch_ID': ['B1001','B1002','B1003','B1004','B1005','B2001','B2002','B2003'],
+        'Branch_Name': ['Mansoorabad','Adilabad','Hyderabad Main','Secunderabad','Warangal','Vijayawada','Visakhapatnam','Guntur'],
         'Zone': ['Telangana']*5 + ['Andhra Pradesh']*3,
-        'Total_Deposits': [110.97, 85.45, 245.80, 189.23, 67.89, 198.76, 223.45, 145.67],
-        'Deposit_Target': [105.46, 95.00, 250.00, 195.00, 75.00, 205.00, 220.00, 150.00],
-        'Advances': [232.29, 156.78, 412.50, 289.45, 98.76, 356.89, 389.23, 245.78],
-        'Advance_Target': [218.16, 175.00, 425.00, 295.00, 110.00, 365.00, 395.00, 255.00],
-        'NPA_Percent': [2.8, 5.4, 1.9, 3.2, 8.5, 2.3, 1.8, 4.1],
-        'Profit_Per_Staff': [5.44, 3.1, 6.8, 4.5, 1.8, 5.8, 6.5, 3.8],
-        'CASA_Percent': [42.3, 28.5, 51.2, 38.7, 25.4, 44.7, 49.3, 34.9],
-        'CD_Ratio': [72.5, 78.2, 65.8, 70.1, 82.3, 66.8, 64.5, 73.4],
-        'Business_Per_Staff': [85.2, 58.3, 95.7, 78.9, 45.6, 86.7, 91.2, 67.8],
-        'Staff_Count': [25, 18, 42, 35, 15, 38, 40, 27]
+        'Total_Deposits': [110.97,85.45,245.80,189.23,67.89,198.76,223.45,145.67],
+        'Deposit_Target': [105.46,95.00,250.00,195.00,75.00,205.00,220.00,150.00],
+        'Advances': [232.29,156.78,412.50,289.45,98.76,356.89,389.23,245.78],
+        'Advance_Target': [218.16,175.00,425.00,295.00,110.00,365.00,395.00,255.00],
+        'NPA_Percent': [2.8,5.4,1.9,3.2,8.5,2.3,1.8,4.1],
+        'Profit_Per_Staff': [5.44,3.1,6.8,4.5,1.8,5.8,6.5,3.8],
+        'CASA_Percent': [42.3,28.5,51.2,38.7,25.4,44.7,49.3,34.9],
+        'CD_Ratio': [72.5,78.2,65.8,70.1,82.3,66.8,64.5,73.4],
+        'Business_Per_Staff': [85.2,58.3,95.7,78.9,45.6,86.7,91.2,67.8],
+        'Staff_Count': [25,18,42,35,15,38,40,27]
     })
 
 def load_file(file):
     try:
         ext = file.name.split('.')[-1].lower()
-        if ext == 'csv':
-            return pd.read_csv(file)
-        elif ext in ['xlsx', 'xls']:
-            return pd.read_excel(file)
-        else:
-            st.error("Unsupported format")
-            return None
-    except Exception as e:
-        st.error(f"Error: {e}")
-        return None
+        if ext == 'csv': return pd.read_csv(file)
+        elif ext in ['xlsx','xls']: return pd.read_excel(file)
+        else: st.error("Unsupported format"); return None
+    except Exception as e: st.error(f"Error: {e}"); return None
 
 
+# ─────────────────────────────────────────────
+# MAIN APP
+# ─────────────────────────────────────────────
 def main():
-    # ENHANCED HERO SECTION
+    # ── Hero ──
     st.markdown("""
     <div class="hero-container">
         <h1 class="main-title">🤖 BankVista AI</h1>
-        <p class="subtitle">Next-Generation AI-Powered Banking Analytics Platform</p>
+        <p class="subtitle">Next-Gen AI Banking Analytics · Understands Plain English</p>
         <div class="feature-pills">
-            <div class="feature-pill">
-                <span>💬</span> Conversational AI
-            </div>
-            <div class="feature-pill">
-                <span>📈</span> Predictive Analytics
-            </div>
-            <div class="feature-pill">
-                <span>🎯</span> Real-Time Risk Scoring
-            </div>
-            <div class="feature-pill">
-                <span>📊</span> Dynamic Excel Export
-            </div>
-            <div class="feature-pill">
-                <span>🧠</span> Supportive Insights
-            </div>
-            <div class="feature-pill">
-                <span>⚡</span> Intelligent Automation
-            </div>
+            <div class="feature-pill"><span>💬</span> Smart Chat</div>
+            <div class="feature-pill"><span>📈</span> Predictions</div>
+            <div class="feature-pill"><span>🎯</span> Risk Scoring</div>
+            <div class="feature-pill"><span>🔍</span> Anomaly Detection</div>
+            <div class="feature-pill"><span>📊</span> Branch Compare</div>
+            <div class="feature-pill"><span>🗺️</span> Zone Analytics</div>
+            <div class="feature-pill"><span>👥</span> Staff Efficiency</div>
+            <div class="feature-pill"><span>📥</span> Excel Export</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Sidebar
+
+    # ── Sidebar ──
     with st.sidebar:
         st.markdown("### 📤 Upload Data")
-        uploaded = st.file_uploader("Choose file", type=['csv', 'xlsx', 'xls'])
-        
+        uploaded = st.file_uploader("Choose file (CSV / Excel)", type=['csv','xlsx','xls'])
         if st.button("📊 Try Sample Data", use_container_width=True):
             st.session_state['use_sample'] = True
             st.session_state['uploaded_df'] = sample_data()
-        
+            if 'ai_assistant' in st.session_state:
+                del st.session_state['ai_assistant']
+                st.session_state['chat_messages'] = []
+
         st.markdown("---")
         st.markdown("""
-        <div style="background: #d1fae5; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #10b981;">
-        <h4 style="margin-top: 0; color: #065f46;">🤖 AI Features</h4>
-        <p style="margin-bottom: 0.5rem; color: #065f46;">✅ Chat with your data</p>
-        <p style="margin-bottom: 0.5rem; color: #065f46;">✅ Predict NPA trends</p>
-        <p style="margin-bottom: 0.5rem; color: #065f46;">✅ Smart insights generation</p>
-        <p style="margin-bottom: 0.5rem; color: #065f46;">✅ Supportive coaching tone</p>
-        <p style="margin-bottom: 0; color: #065f46;">✅ Dynamic Excel dashboards</p>
+        <div style="background:#d1fae5;padding:1.2rem;border-radius:12px;border-left:4px solid #10b981;">
+            <h4 style="margin-top:0;color:#065f46;">🤖 AI Understands</h4>
+            <p style="margin-bottom:0.4rem;color:#065f46;">✅ "Which loans are bad?" → NPA</p>
+            <p style="margin-bottom:0.4rem;color:#065f46;">✅ "Cheap deposits?" → CASA</p>
+            <p style="margin-bottom:0.4rem;color:#065f46;">✅ "Anything weird?" → Anomalies</p>
+            <p style="margin-bottom:0.4rem;color:#065f46;">✅ "Tell me about Warangal"</p>
+            <p style="margin-bottom:0;color:#065f46;">✅ Follow-ups like "tell me more"</p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         st.markdown("---")
         st.markdown("""
-        <div style="background: #dbeafe; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #3b82f6;">
-        <h4 style="margin-top: 0; color: #1e40af;">💡 Quick Actions</h4>
-        <p style="margin-bottom: 0.5rem; color: #1e40af;">• NPA analysis & trends</p>
-        <p style="margin-bottom: 0.5rem; color: #1e40af;">• CASA opportunities</p>
-        <p style="margin-bottom: 0.5rem; color: #1e40af;">• Success patterns</p>
-        <p style="margin-bottom: 0; color: #1e40af;">• Performance dashboards</p>
+        <div style="background:#dbeafe;padding:1.2rem;border-radius:12px;border-left:4px solid #3b82f6;">
+            <h4 style="margin-top:0;color:#1e40af;">📊 Features</h4>
+            <p style="margin-bottom:0.3rem;color:#1e40af;">• AI Chat (plain language)</p>
+            <p style="margin-bottom:0.3rem;color:#1e40af;">• Branch Comparison</p>
+            <p style="margin-bottom:0.3rem;color:#1e40af;">• Heatmap Visualization</p>
+            <p style="margin-bottom:0.3rem;color:#1e40af;">• Anomaly Detection</p>
+            <p style="margin-bottom:0.3rem;color:#1e40af;">• Staff Efficiency</p>
+            <p style="margin-bottom:0.3rem;color:#1e40af;">• Zone Analytics</p>
+            <p style="margin-bottom:0;color:#1e40af;">• Dynamic Excel Export</p>
         </div>
         """, unsafe_allow_html=True)
-    
-    # Load data
+
+    # ── Load data ──
     if uploaded:
         df = load_file(uploaded)
         if df is not None:
             st.session_state['uploaded_df'] = df
             st.session_state['use_sample'] = False
-    
+            if 'ai_assistant' in st.session_state:
+                del st.session_state['ai_assistant']
+                st.session_state['chat_messages'] = []
+
     if st.session_state.get('use_sample') or 'uploaded_df' in st.session_state:
         df = st.session_state['uploaded_df']
-        
-        # Initialize AI
+
+        # Init AI
         if 'ai_assistant' not in st.session_state:
             st.session_state['ai_assistant'] = AIAssistant(df)
             st.session_state['chat_messages'] = []
-        
+
         predictive = PredictiveAnalytics(df)
-        
-        # ENHANCED STATS DISPLAY
+
+        # ── Status bar ──
         st.markdown(f"""
-        <div style="background: #d1fae5; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid #10b981;">
-            <p style="text-align: center; font-size: 1.1rem; margin: 0; color: #065f46;">
-                ✅ <strong>Loaded {len(df)} branches</strong> | 🤖 <strong>AI Ready</strong> | 
-                📊 <strong>Total Deposits: ₹{df['Total_Deposits'].sum():.1f} Cr</strong>
+        <div style="background:#d1fae5;padding:1rem 1.5rem;border-radius:12px;margin-bottom:1.5rem;border:1px solid #10b981;">
+            <p style="text-align:center;font-size:1rem;margin:0;color:#065f46;">
+                ✅ <strong>{len(df)} branches loaded</strong> &nbsp;|&nbsp; 🤖 <strong>AI Ready</strong> &nbsp;|&nbsp;
+                💰 <strong>₹{df['Total_Deposits'].sum():.1f} Cr deposits</strong> &nbsp;|&nbsp;
+                👥 <strong>{df['Staff_Count'].sum()} staff</strong>
             </p>
         </div>
         """, unsafe_allow_html=True)
-        
-        # STATS CARDS
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.markdown("""
-            <div class="stat-card">
-                <div class="stat-value">96%</div>
-                <div class="stat-label">Satisfaction</div>
-                <div class="stat-trend">↗ +8% trend</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div class="stat-card">
-                <div class="stat-value">99.2%</div>
-                <div class="stat-label">Fraud Detection</div>
-                <div class="stat-trend">↗ +12% accuracy</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            avg_npa = df['NPA_Percent'].mean()
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="stat-value">{avg_npa:.1f}%</div>
-                <div class="stat-label">Avg NPA</div>
-                <div class="stat-trend">Monitored</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col4:
-            avg_casa = df['CASA_Percent'].mean()
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="stat-value">{avg_casa:.1f}%</div>
-                <div class="stat-label">Avg CASA</div>
-                <div class="stat-trend">Growing</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Tabs
-        tab1, tab2, tab3, tab4 = st.tabs(["💬 AI Coach", "📈 Predictions", "📊 Dashboard", "📥 Export"])
-        
-        # TAB 1: AI CHAT
+
+        # ── Summary KPIs ──
+        c1, c2, c3, c4 = st.columns(4)
+        avg_npa = df['NPA_Percent'].mean()
+        avg_casa = df['CASA_Percent'].mean()
+        dep_ach = (df['Total_Deposits'].sum() / df['Deposit_Target'].sum() * 100)
+
+        for col, val, label, trend in [
+            (c1, f"{dep_ach:.0f}%", "Deposit Achievement", "↗ vs target"),
+            (c2, f"{avg_npa:.1f}%", "Avg NPA", "Monitored daily"),
+            (c3, f"{avg_casa:.1f}%", "Avg CASA", "Growing"),
+            (c4, f"₹{df['Business_Per_Staff'].mean():.0f}Cr", "Avg Biz/Staff", "Productivity"),
+        ]:
+            with col:
+                st.markdown(f"""
+                <div class="stat-card">
+                    <div class="stat-value">{val}</div>
+                    <div class="stat-label">{label}</div>
+                    <div class="stat-trend">{trend}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # ── TABS ──
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+            "💬 AI Coach", "📈 Predictions", "📊 Dashboard",
+            "🔄 Compare", "🗺️ Heatmaps", "🔍 Anomalies", "📥 Export"
+        ])
+
+        # ════════════════════════════════════════
+        # TAB 1 — AI COACH
+        # ════════════════════════════════════════
         with tab1:
-            st.markdown('<p class="section-header">💬 Chat with Your Data</p>', unsafe_allow_html=True)
-            
+            st.markdown('<p class="section-header">💬 Chat with Your Data — Plain English OK!</p>', unsafe_allow_html=True)
+
+            # Chat display
             st.markdown('<div class="ai-chat-container">', unsafe_allow_html=True)
-            
+            if not st.session_state['chat_messages']:
+                st.markdown('<div class="ai-message">🤖 Hi! I understand plain language. Try asking:<br>'
+                            '• "Which loans are bad?"<br>'
+                            '• "How are deposits looking?"<br>'
+                            '• "Anything weird in the numbers?"<br>'
+                            '• "Tell me about Hyderabad Main"<br><br>'
+                            'Just type naturally — I\'ll figure it out! 😊</div>', unsafe_allow_html=True)
             for msg in st.session_state['chat_messages']:
                 if msg['role'] == 'user':
                     st.markdown(f'<div class="user-message">👤 {msg["content"]}</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(f'<div class="ai-message">🤖 {msg["content"]}</div>', unsafe_allow_html=True)
-            
             st.markdown('</div>', unsafe_allow_html=True)
-            
+
+            # Input row
             col1, col2 = st.columns([5, 1])
             with col1:
-                user_input = st.text_input("Ask anything...", key="chat_input", label_visibility="collapsed", placeholder="e.g., Which branches need NPA attention?")
+                user_input = st.text_input("Ask anything...", key="chat_input", label_visibility="collapsed",
+                                           placeholder='e.g. "Which branches have bad loans?" or "Tell me about Warangal"')
             with col2:
                 send_btn = st.button("Send 🚀", use_container_width=True)
-            
+
             if send_btn and user_input:
                 st.session_state['chat_messages'].append({'role': 'user', 'content': user_input})
                 response = st.session_state['ai_assistant'].chat(user_input)
                 st.session_state['chat_messages'].append({'role': 'assistant', 'content': response})
                 st.rerun()
-            
+
+            # Quick buttons – expanded set
             st.markdown("**💡 Quick Questions:**")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                if st.button("🔍 NPA Analysis", use_container_width=True):
-                    st.session_state['chat_messages'].append({'role': 'user', 'content': 'Which branches need NPA attention?'})
-                    response = st.session_state['ai_assistant'].chat('Which branches need NPA attention?')
-                    st.session_state['chat_messages'].append({'role': 'assistant', 'content': response})
-                    st.rerun()
-            
-            with col2:
-                if st.button("💰 CASA Opportunities", use_container_width=True):
-                    st.session_state['chat_messages'].append({'role': 'user', 'content': 'Where are CASA opportunities?'})
-                    response = st.session_state['ai_assistant'].chat('Where are CASA opportunities?')
-                    st.session_state['chat_messages'].append({'role': 'assistant', 'content': response})
-                    st.rerun()
-            
-            with col3:
-                if st.button("📊 Success Patterns", use_container_width=True):
-                    st.session_state['chat_messages'].append({'role': 'user', 'content': 'What are successful branches doing?'})
-                    response = st.session_state['ai_assistant'].chat('What are successful branches doing?')
-                    st.session_state['chat_messages'].append({'role': 'assistant', 'content': response})
-                    st.rerun()
-        
-        # TAB 2: PREDICTIONS
+            row1 = st.columns(4)
+            quick_qs = [
+                ("🔴 Bad Loans?", "Which loans are bad?"),
+                ("💰 Cheap Deposits?", "Where can we get cheap deposits?"),
+                ("🏆 Who's doing well?", "Which branches are doing great?"),
+                ("🛟 Need help?", "Which branches are struggling?"),
+            ]
+            for col, (label, q) in zip(row1, quick_qs):
+                with col:
+                    if st.button(label, use_container_width=True):
+                        st.session_state['chat_messages'].append({'role': 'user', 'content': q})
+                        st.session_state['chat_messages'].append({'role': 'assistant', 'content': st.session_state['ai_assistant'].chat(q)})
+                        st.rerun()
+
+            row2 = st.columns(4)
+            quick_qs2 = [
+                ("🎯 On Track?", "Are we meeting our targets?"),
+                ("🔍 Anything weird?", "Are there any anomalies or strange numbers?"),
+                ("🗺️ Zone Summary", "Give me a zone-wise summary"),
+                ("👥 Staff Stats", "How is staff efficiency?"),
+            ]
+            for col, (label, q) in zip(row2, quick_qs2):
+                with col:
+                    if st.button(label, use_container_width=True):
+                        st.session_state['chat_messages'].append({'role': 'user', 'content': q})
+                        st.session_state['chat_messages'].append({'role': 'assistant', 'content': st.session_state['ai_assistant'].chat(q)})
+                        st.rerun()
+
+        # ════════════════════════════════════════
+        # TAB 2 — PREDICTIONS
+        # ════════════════════════════════════════
         with tab2:
             st.markdown('<p class="section-header">📈 Predictive Analytics</p>', unsafe_allow_html=True)
-            
-            selected = st.selectbox("Select Branch:", df['Branch_Name'].tolist())
-            
+            selected = st.selectbox("Select Branch:", df['Branch_Name'].tolist(), key="pred_branch")
+
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 st.markdown("### 📉 NPA Forecast (6 Months)")
                 npa_pred = predictive.predict_npa_trend(selected, months=6)
-                
+                color_map = {'stable': '#10b981', 'watch': '#f59e0b', 'needs attention': '#ef4444'}
+
                 st.markdown(f"""
                 <div class="metric-card">
-                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;"><strong>Current NPA:</strong> {npa_pred['current_npa']:.2f}%</p>
-                    <p style="font-size: 1.1rem; margin: 0;"><strong>Risk Level:</strong> <span style="color: {'#10b981' if npa_pred['risk_level'] == 'stable' else '#f59e0b' if npa_pred['risk_level'] == 'watch' else '#ef4444'};">{npa_pred['risk_level'].upper()}</span></p>
+                    <p style="font-size:1rem;margin-bottom:0.3rem;"><strong>Current NPA:</strong> {npa_pred['current_npa']:.2f}%</p>
+                    <p style="font-size:1rem;margin:0;"><strong>Outlook:</strong>
+                        <span style="color:{color_map.get(npa_pred['risk_level'],'#374151')};font-weight:700;">
+                            {npa_pred['risk_level'].upper()}
+                        </span>
+                    </p>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                months = [p['month'] for p in npa_pred['predictions']]
-                predicted = [p['predicted_npa'] for p in npa_pred['predictions']]
-                
+
+                months_x = [0] + [p['month'] for p in npa_pred['predictions']]
+                npa_y = [npa_pred['current_npa']] + [p['predicted_npa'] for p in npa_pred['predictions']]
+
                 fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=[0] + months,
-                    y=[npa_pred['current_npa']] + predicted,
-                    mode='lines+markers',
-                    line=dict(color='#06b6d4', width=3),
-                    marker=dict(size=8)
-                ))
+                fig.add_trace(go.Scatter(x=months_x, y=npa_y, mode='lines+markers',
+                              line=dict(color='#06b6d4', width=3), marker=dict(size=8, color='#06b6d4'),
+                              name="Predicted NPA"))
                 fig.add_hline(y=3, line_dash="dash", line_color="#10b981", annotation_text="Target: 3%")
                 fig.add_hline(y=6, line_dash="dash", line_color="#f59e0b", annotation_text="Watch: 6%")
-                fig.update_layout(
-                    title="NPA Trend Prediction",
-                    height=350,
-                    plot_bgcolor='white',
-                    paper_bgcolor='white'
-                )
+                fig.update_layout(title="NPA Trend Forecast", height=320, plot_bgcolor='white', paper_bgcolor='white',
+                                  xaxis_title="Month", yaxis_title="NPA %")
                 st.plotly_chart(fig, use_container_width=True)
-            
+
             with col2:
                 st.markdown("### 🎯 Target Achievement Probability")
                 target_pred = predictive.predict_target_achievement(selected)
-                
-                fig = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=target_pred['overall_probability'],
+                bar_color = "#10b981" if target_pred['overall_probability'] > 75 else "#f59e0b"
+
+                fig = go.Figure(go.Indicator(mode="gauge+number", value=target_pred['overall_probability'],
                     title={'text': "Success Probability"},
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#10b981" if target_pred['overall_probability'] > 80 else "#f59e0b"},
-                        'steps': [
-                            {'range': [0, 50], 'color': "rgba(239, 68, 68, 0.2)"},
-                            {'range': [50, 80], 'color': "rgba(245, 158, 11, 0.2)"},
-                            {'range': [80, 100], 'color': "rgba(16, 185, 129, 0.2)"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#1f2937", 'width': 4},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
-                    }
-                ))
-                fig.update_layout(
-                    height=350,
-                    plot_bgcolor='white',
-                    paper_bgcolor='white'
-                )
+                    gauge={'axis': {'range': [0, 100]}, 'bar': {'color': bar_color},
+                           'steps': [{'range': [0, 50], 'color': 'rgba(239,68,68,0.15)'},
+                                     {'range': [50, 75], 'color': 'rgba(245,158,11,0.15)'},
+                                     {'range': [75, 100], 'color': 'rgba(16,185,129,0.15)'}],
+                           'threshold': {'line': {'color': '#1f2937', 'width': 3}, 'thickness': 0.7, 'value': 75}}))
+                fig.update_layout(height=320, plot_bgcolor='white', paper_bgcolor='white')
                 st.plotly_chart(fig, use_container_width=True)
-                
+
                 st.markdown(f"""
                 <div class="metric-card">
-                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;"><strong>Deposit Probability:</strong> {target_pred['deposit_probability']:.1f}%</p>
-                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;"><strong>Advance Probability:</strong> {target_pred['advance_probability']:.1f}%</p>
-                    <p style="font-size: 1.2rem; font-weight: bold; margin: 0;"><strong>Status:</strong> {target_pred['recommendation']}</p>
+                    <p style="font-size:0.95rem;margin-bottom:0.3rem;"><strong>Deposit Prob:</strong> {target_pred['deposit_probability']:.0f}%</p>
+                    <p style="font-size:0.95rem;margin-bottom:0.3rem;"><strong>Advance Prob:</strong> {target_pred['advance_probability']:.0f}%</p>
+                    <p style="font-size:1.05rem;font-weight:bold;margin:0;"><strong>Status:</strong> {target_pred['recommendation']}</p>
                 </div>
                 """, unsafe_allow_html=True)
-        
-        # TAB 3: DASHBOARD
+
+        # ════════════════════════════════════════
+        # TAB 3 — DASHBOARD
+        # ════════════════════════════════════════
         with tab3:
-            st.markdown('<p class="section-header">📊 Performance Dashboard</p>', unsafe_allow_html=True)
-            
+            st.markdown('<p class="section-header">📊 Branch Performance Dashboard</p>', unsafe_allow_html=True)
             selected = st.selectbox("Select Branch:", df['Branch_Name'].tolist(), key="dash_branch")
-            
             branch_data = df[df['Branch_Name'] == selected].iloc[0].to_dict()
             analysis = EnhancedBankVista(branch_data).analyze()
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            grade_icon = "🟢" if analysis['grade'] in ['A+', 'A'] else "🟡" if analysis['grade'] == 'B' else "🔴"
-            
+
+            # KPI row
+            grade_emoji = "🟢" if analysis['grade'] in ['A+','A'] else "🟡" if analysis['grade'] == 'B' else "🔴"
+            kpis = [
+                (f"{grade_emoji} {analysis['grade']}", "Grade"),
+                (f"{analysis['score']}/80", "Score"),
+                (f"{len(analysis['insights']['needs_support'])}", "Needs Support"),
+                (f"{len(analysis['insights']['strengths'])}", "Strengths"),
+            ]
+            cols = st.columns(4)
+            for col, (val, label) in zip(cols, kpis):
+                with col:
+                    st.markdown(f"""
+                    <div class="metric-card" style="text-align:center;">
+                        <div class="stat-value">{val}</div>
+                        <div class="stat-label">{label}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # Radar chart
+            row = df[df['Branch_Name'] == selected].iloc[0]
+            dep_pct = min(row['Total_Deposits'] / row['Deposit_Target'] * 100, 100)
+            adv_pct = min(row['Advances'] / row['Advance_Target'] * 100, 100)
+            npa_score = max(0, 100 - row['NPA_Percent'] * 15)
+            casa_score = min(row['CASA_Percent'] * 2, 100)
+            staff_score = min(row['Business_Per_Staff'] / 1.0, 100)
+
+            categories = ['Deposits', 'Advances', 'NPA Health', 'CASA', 'Staff Efficiency']
+            values = [dep_pct, adv_pct, npa_score, casa_score, staff_score]
+            values_closed = values + [values[0]]
+            categories_closed = categories + [categories[0]]
+
+            col1, col2 = st.columns(2)
             with col1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="stat-value">{grade_icon} {analysis['grade']}</div>
-                    <div class="stat-label">Grade</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                # Performance score bars
+                fig = go.Figure(go.Bar(
+                    x=values, y=categories, orientation='h',
+                    marker_color=['#06b6d4','#3b82f6','#10b981','#8b5cf6','#f59e0b'],
+                    text=[f"{v:.0f}%" for v in values], textposition='outside',
+                    width=0.5
+                ))
+                fig.update_layout(
+                    title=f"📊 {selected} — Performance Breakdown",
+                    height=320, plot_bgcolor='white', paper_bgcolor='white',
+                    xaxis=dict(range=[0, 120], title="Score (0–100)"),
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
             with col2:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="stat-value">{analysis['score']}/80</div>
-                    <div class="stat-label">Score</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col3:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="stat-value">{len(analysis['insights']['needs_support'])}</div>
-                    <div class="stat-label">Needs Support</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col4:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="stat-value">{len(analysis['insights']['strengths'])}</div>
-                    <div class="stat-label">Strengths</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                # Deposit vs Advance pie
+                fig = go.Figure(data=[go.Pie(
+                    labels=['Deposits', 'Advances'],
+                    values=[row['Total_Deposits'], row['Advances']],
+                    marker_colors=['#06b6d4', '#667eea'],
+                    hole=0.4, textinfo='label+percent'
+                )])
+                fig.update_layout(title=f"💰 {selected} — Business Mix", height=300,
+                                  plot_bgcolor='white', paper_bgcolor='white')
+                st.plotly_chart(fig, use_container_width=True)
+
+            # Insight cards
             st.markdown("---")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown("### 🔍 Areas for Attention")
                 if analysis['insights']['needs_support']:
-                    st.markdown("### 🔍 Areas for Attention")
-                    for insight in analysis['insights']['needs_support']:
-                        st.markdown(f'<div class="alert-info">', unsafe_allow_html=True)
-                        st.markdown(f"**{insight['title']}**")
-                        st.markdown(f"{insight['detail']}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-            
-            with col2:
+                    for ins in analysis['insights']['needs_support']:
+                        st.markdown(f'<div class="alert-info"><strong>{ins["title"]}</strong><br>{ins["detail"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="alert-strength">All good here! ✅</div>', unsafe_allow_html=True)
+            with c2:
+                st.markdown("### 👀 Worth Monitoring")
                 if analysis['insights']['watch_area']:
-                    st.markdown("### 👀 Worth Monitoring")
-                    for insight in analysis['insights']['watch_area']:
-                        st.markdown(f'<div class="alert-watch">', unsafe_allow_html=True)
-                        st.markdown(f"**{insight['title']}**")
-                        st.markdown(f"{insight['detail']}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-            
-            with col3:
+                    for ins in analysis['insights']['watch_area']:
+                        st.markdown(f'<div class="alert-watch"><strong>{ins["title"]}</strong><br>{ins["detail"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="alert-strength">Nothing flagged! 👍</div>', unsafe_allow_html=True)
+            with c3:
+                st.markdown("### ✨ What's Working")
                 if analysis['insights']['strengths']:
-                    st.markdown("### ✨ What's Working")
-                    for insight in analysis['insights']['strengths']:
-                        st.markdown(f'<div class="alert-strength">', unsafe_allow_html=True)
-                        st.markdown(f"**{insight['title']}**")
-                        st.markdown(f"{insight['detail']}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # TAB 4: EXPORT
+                    for ins in analysis['insights']['strengths']:
+                        st.markdown(f'<div class="alert-strength"><strong>{ins["title"]}</strong><br>{ins["detail"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="alert-info">Keep working at it — progress takes time! 💪</div>', unsafe_allow_html=True)
+
+        # ════════════════════════════════════════
+        # TAB 4 — COMPARE
+        # ════════════════════════════════════════
         with tab4:
+            st.markdown('<p class="section-header">🔄 Branch Comparison</p>', unsafe_allow_html=True)
+            branches = df['Branch_Name'].tolist()
+            col1, col2 = st.columns(2)
+            with col1: b1 = st.selectbox("Branch A", branches, index=0, key="cmp_a")
+            with col2: b2 = st.selectbox("Branch B", branches, index=min(1, len(branches)-1), key="cmp_b")
+
+            if b1 == b2:
+                st.warning("Please select two different branches to compare.")
+            else:
+                r1 = df[df['Branch_Name'] == b1].iloc[0]
+                r2 = df[df['Branch_Name'] == b2].iloc[0]
+
+                metrics_cmp = [
+                    ("Total Deposits (Cr)", 'Total_Deposits', "₹{:.1f}"),
+                    ("Deposit Target (Cr)", 'Deposit_Target', "₹{:.1f}"),
+                    ("Deposit Achievement", None, "{:.1f}%"),
+                    ("Advances (Cr)", 'Advances', "₹{:.1f}"),
+                    ("Advance Achievement", None, "{:.1f}%"),
+                    ("NPA %", 'NPA_Percent', "{:.2f}%"),
+                    ("CASA %", 'CASA_Percent', "{:.1f}%"),
+                    ("CD Ratio", 'CD_Ratio', "{:.1f}%"),
+                    ("Staff Count", 'Staff_Count', "{}"),
+                    ("Business / Staff", 'Business_Per_Staff', "₹{:.1f} Cr"),
+                    ("Profit / Staff", 'Profit_Per_Staff', "₹{:.1f} Cr"),
+                ]
+
+                ca, cb = st.columns(2)
+                with ca:
+                    st.markdown(f'<div class="compare-card"><div class="compare-header" style="color:#06b6d4;">📍 {b1}</div>', unsafe_allow_html=True)
+                    for label, key, fmt in metrics_cmp:
+                        if key is None:
+                            if "Deposit Ach" in label: v1 = r1['Total_Deposits']/r1['Deposit_Target']*100
+                            else: v1 = r1['Advances']/r1['Advance_Target']*100
+                        else:
+                            v1 = r1[key]
+                        st.markdown(f'<div class="compare-row"><span class="compare-label">{label}</span><span class="compare-value">{fmt.format(v1)}</span></div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                with cb:
+                    st.markdown(f'<div class="compare-card"><div class="compare-header" style="color:#667eea;">📍 {b2}</div>', unsafe_allow_html=True)
+                    for label, key, fmt in metrics_cmp:
+                        if key is None:
+                            if "Deposit Ach" in label: v2 = r2['Total_Deposits']/r2['Deposit_Target']*100
+                            else: v2 = r2['Advances']/r2['Advance_Target']*100
+                        else:
+                            v2 = r2[key]
+                        st.markdown(f'<div class="compare-row"><span class="compare-label">{label}</span><span class="compare-value">{fmt.format(v2)}</span></div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                # Side-by-side bar chart
+                compare_metrics = ['Total_Deposits', 'Advances', 'NPA_Percent', 'CASA_Percent', 'Business_Per_Staff']
+                compare_labels = ['Deposits', 'Advances', 'NPA %', 'CASA %', 'Biz/Staff']
+                fig = go.Figure()
+                fig.add_trace(go.Bar(name=b1, x=compare_labels, y=[r1[m] for m in compare_metrics], marker_color='#06b6d4'))
+                fig.add_trace(go.Bar(name=b2, x=compare_labels, y=[r2[m] for m in compare_metrics], marker_color='#667eea'))
+                fig.update_layout(barmode='group', title="📊 Side-by-Side Comparison", height=350,
+                                  plot_bgcolor='white', paper_bgcolor='white')
+                st.plotly_chart(fig, use_container_width=True)
+
+        # ════════════════════════════════════════
+        # TAB 5 — HEATMAPS
+        # ════════════════════════════════════════
+        with tab5:
+            st.markdown('<p class="section-header">🗺️ Heatmap Visualizations</p>', unsafe_allow_html=True)
+
+            heatmap_metric = st.selectbox("Select Metric:", [
+                'NPA_Percent', 'CASA_Percent', 'CD_Ratio', 'Business_Per_Staff', 'Profit_Per_Staff'
+            ], format_func=lambda x: {'NPA_Percent':'NPA %','CASA_Percent':'CASA %','CD_Ratio':'CD Ratio',
+                                       'Business_Per_Staff':'Business/Staff','Profit_Per_Staff':'Profit/Staff'}.get(x, x))
+
+            hdf = df[['Branch_Name', heatmap_metric]].sort_values(heatmap_metric, ascending=(heatmap_metric != 'NPA_Percent'))
+
+            # Color logic: for NPA lower is better
+            if heatmap_metric == 'NPA_Percent':
+                colors = ['#10b981' if v <= 3 else '#f59e0b' if v <= 6 else '#ef4444' for v in hdf[heatmap_metric]]
+            else:
+                # Higher is better for most
+                vals = hdf[heatmap_metric].values
+                mn, mx = vals.min(), vals.max()
+                rng = mx - mn if mx != mn else 1
+                colors = []
+                for v in vals:
+                    pct = (v - mn) / rng
+                    if pct >= 0.66: colors.append('#10b981')
+                    elif pct >= 0.33: colors.append('#f59e0b')
+                    else: colors.append('#ef4444')
+
+            fig = go.Figure(go.Bar(
+                x=hdf[heatmap_metric].tolist(),
+                y=hdf['Branch_Name'].tolist(),
+                orientation='h',
+                marker_color=colors,
+                text=[f"{v:.2f}" for v in hdf[heatmap_metric]],
+                textposition='outside'
+            ))
+            label_map = {'NPA_Percent':'NPA %','CASA_Percent':'CASA %','CD_Ratio':'CD Ratio',
+                         'Business_Per_Staff':'Business/Staff (₹Cr)','Profit_Per_Staff':'Profit/Staff (₹Cr)'}
+            fig.update_layout(title=f"🗺️ {label_map.get(heatmap_metric, heatmap_metric)} by Branch",
+                              height=380, plot_bgcolor='white', paper_bgcolor='white',
+                              xaxis_title=label_map.get(heatmap_metric, heatmap_metric))
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Legend
+            if heatmap_metric == 'NPA_Percent':
+                st.markdown("""
+                <div class="heatmap-legend">
+                    <div class="legend-item"><div class="legend-swatch" style="background:#10b981;"></div> ≤ 3% (Healthy)</div>
+                    <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b;"></div> 3–6% (Watch)</div>
+                    <div class="legend-item"><div class="legend-swatch" style="background:#ef4444;"></div> > 6% (Attention)</div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="heatmap-legend">
+                    <div class="legend-item"><div class="legend-swatch" style="background:#10b981;"></div> Top 33%</div>
+                    <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b;"></div> Middle 33%</div>
+                    <div class="legend-item"><div class="legend-swatch" style="background:#ef4444;"></div> Bottom 33%</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Zone-wise grouped heatmap
+            st.markdown("### 🗺️ Zone-wise Aggregation")
+            zone_agg = df.groupby('Zone').agg({
+                'Total_Deposits': 'sum', 'Advances': 'sum',
+                'NPA_Percent': 'mean', 'CASA_Percent': 'mean',
+                'Staff_Count': 'sum', 'Business_Per_Staff': 'mean'
+            }).round(2).reset_index()
+
+            fig = make_subplots(rows=1, cols=2, subplot_titles=("Deposits vs Advances by Zone", "Avg NPA vs CASA by Zone"))
+            for i, zone in enumerate(zone_agg['Zone']):
+                zr = zone_agg[zone_agg['Zone'] == zone].iloc[0]
+                fig.add_trace(go.Bar(name=f"{zone} Dep", x=[zone], y=[zr['Total_Deposits']], marker_color='#06b6d4'), row=1, col=1)
+                fig.add_trace(go.Bar(name=f"{zone} Adv", x=[zone], y=[zr['Advances']], marker_color='#667eea'), row=1, col=1)
+                fig.add_trace(go.Bar(name=f"{zone} NPA", x=[zone], y=[zr['NPA_Percent']], marker_color='#ef4444'), row=1, col=2)
+                fig.add_trace(go.Bar(name=f"{zone} CASA", x=[zone], y=[zr['CASA_Percent']], marker_color='#10b981'), row=1, col=2)
+
+            fig.update_layout(height=320, plot_bgcolor='white', paper_bgcolor='white', barmode='group', showlegend=True)
+            st.plotly_chart(fig, use_container_width=True)
+
+        # ════════════════════════════════════════
+        # TAB 6 — ANOMALIES
+        # ════════════════════════════════════════
+        with tab6:
+            st.markdown('<p class="section-header">🔍 Anomaly Detection</p>', unsafe_allow_html=True)
+            anomalies = AnomalyDetector(df).detect()
+
+            if not anomalies:
+                st.markdown('<div class="alert-strength" style="text-align:center;padding:2rem;"><h3>👍 All Clear!</h3><p>No unusual patterns detected across any branch or metric.</p></div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f"Found **{len(anomalies)}** data points that stand out. These aren't necessarily problems — just worth understanding.\n")
+
+                # Summary table
+                adf = pd.DataFrame(anomalies)
+                adf['Direction'] = adf['direction'].map({'HIGH': '⬆️ HIGH', 'LOW': '⬇️ LOW'})
+                st.dataframe(adf[['branch','metric','value','mean','z_score','Direction']].rename(
+                    columns={'branch':'Branch','metric':'Metric','value':'Value','mean':'Avg','z_score':'Z-Score'}
+                ), use_container_width=True, hide_index=True)
+
+                # Visual
+                st.markdown("### 📊 Anomaly Visualization")
+                for metric in adf['metric'].unique():
+                    sub = adf[adf['metric'] == metric]
+                    all_vals = df[metric]
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(x=df['Branch_Name'], y=df[metric],
+                                         marker_color=['#ef4444' if b in sub['branch'].values else '#06b6d4' for b in df['Branch_Name']],
+                                         name=metric))
+                    fig.add_hline(y=all_vals.mean(), line_dash="dash", line_color="#374151", annotation_text=f"Avg: {all_vals.mean():.2f}")
+                    fig.update_layout(title=f"⚠️ {metric} — Flagged Branches in Red", height=280,
+                                      plot_bgcolor='white', paper_bgcolor='white')
+                    st.plotly_chart(fig, use_container_width=True)
+
+        # ════════════════════════════════════════
+        # TAB 7 — EXPORT
+        # ════════════════════════════════════════
+        with tab7:
             st.markdown('<p class="section-header">📥 Export & Download</p>', unsafe_allow_html=True)
-            
+
             st.markdown("""
             <div class="download-section">
                 <h3>🎯 Dynamic Excel Dashboard</h3>
-                <p style="font-size: 1.1rem; margin-bottom: 1rem;">Generate an intelligent Excel file with:</p>
-                <ul style="font-size: 1rem; line-height: 1.8;">
-                    <li>✅ Dropdown to select any branch</li>
-                    <li>✅ Auto-updating metrics and calculations</li>
-                    <li>✅ Works completely offline</li>
-                    <li>✅ All branches summary in one file</li>
-                    <li>✅ Professional formatting and design</li>
+                <p style="font-size:1.05rem;margin-bottom:0.8rem;">Generates a fully offline-capable Excel file with:</p>
+                <ul style="font-size:0.95rem;line-height:1.8;">
+                    <li>✅ Branch dropdown with auto-updating formulas</li>
+                    <li>✅ Key metrics, grading, and status indicators</li>
+                    <li>✅ Full summary sheet for all branches</li>
+                    <li>✅ Professional formatting — share-ready</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
-            
+
             if st.button("📊 Generate Excel Dashboard", use_container_width=True, type="primary"):
-                with st.spinner("Creating dynamic dashboard..."):
-                    excel_file = create_dynamic_excel(df)
-                
-                st.download_button(
-                    "📥 Download Excel Dashboard",
-                    excel_file,
+                with st.spinner("Building your dashboard..."):
+                    excel_bytes = create_dynamic_excel(df)
+                st.download_button("📥 Download Excel Dashboard", excel_bytes,
                     f"BankVista_Dashboard_{date.today().strftime('%Y%m%d')}.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-            
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+
             st.markdown("---")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
+            c1, c2 = st.columns(2)
+            with c1:
                 st.markdown("""
                 <div class="feature-card">
                     <div class="feature-icon">💬</div>
-                    <div class="feature-title">Export Conversation</div>
-                    <div class="feature-desc">Download your complete AI chat history in JSON format</div>
+                    <div class="feature-title">Export AI Conversation</div>
+                    <div class="feature-desc">Download your chat history as JSON</div>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                if st.button("📝 Export Chat History", use_container_width=True):
-                    chat_json = st.session_state['ai_assistant'].export_conversation()
-                    
-                    st.download_button(
-                        "📥 Download Conversation (JSON)",
-                        chat_json,
-                        f"BankVista_Conversation_{date.today().strftime('%Y%m%d')}.json",
-                        "application/json",
-                        use_container_width=True
-                    )
-            
-            with col2:
+                if st.button("📝 Export Chat", use_container_width=True):
+                    st.download_button("📥 Download JSON", st.session_state['ai_assistant'].export_conversation(),
+                        f"BankVista_Chat_{date.today().strftime('%Y%m%d')}.json", "application/json", use_container_width=True)
+            with c2:
                 st.markdown("""
                 <div class="feature-card">
                     <div class="feature-icon">📊</div>
                     <div class="feature-title">Export Raw Data</div>
-                    <div class="feature-desc">Download the current dataset as CSV for external analysis</div>
+                    <div class="feature-desc">Download current dataset as CSV</div>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                csv = df.to_csv(index=False)
-                st.download_button(
-                    "📥 Download CSV",
-                    csv,
-                    f"BankVista_Data_{date.today().strftime('%Y%m%d')}.csv",
-                    "text/csv",
-                    use_container_width=True
-                )
-    
+                st.download_button("📥 Download CSV", df.to_csv(index=False),
+                    f"BankVista_Data_{date.today().strftime('%Y%m%d')}.csv", "text/csv", use_container_width=True)
+
     else:
-        # WELCOME SCREEN
+        # ── Welcome screen ──
         st.markdown("""
-        <div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 24px; margin-top: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-            <div style="font-size: 4rem; margin-bottom: 1rem;">🚀</div>
-            <h2 style="font-size: 2.5rem; margin-bottom: 1rem; font-weight: 800; color: #1f2937;">Welcome to BankVista AI</h2>
-            <p style="font-size: 1.3rem; color: #6b7280; margin-bottom: 2rem;">
-                Experience the future of banking analytics with AI-powered insights
-            </p>
-            <p style="font-size: 1.1rem; color: #9ca3af;">
-                Upload your data or try our sample dataset to get started
-            </p>
+        <div style="text-align:center;padding:3.5rem 2rem;background:white;border-radius:24px;margin-top:1.5rem;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+            <div style="font-size:3.5rem;margin-bottom:0.8rem;">🚀</div>
+            <h2 style="font-size:2.2rem;margin-bottom:0.8rem;font-weight:800;color:#1f2937;">Welcome to BankVista AI</h2>
+            <p style="font-size:1.2rem;color:#6b7280;margin-bottom:1.5rem;">AI-powered banking analytics that understands plain English</p>
+            <p style="font-size:1rem;color:#9ca3af;">Upload your data or click "Try Sample Data" in the sidebar to begin</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Feature Highlights
-        st.markdown('<p class="section-header">✨ Platform Features</p>', unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            <div class="feature-card">
-                <div class="feature-icon">🤖</div>
-                <div class="feature-title">AI-Powered Chat</div>
-                <div class="feature-desc">
-                    Conversational interface to query your banking data naturally.
-                    Get instant insights with supportive, context-aware responses.
+
+        st.markdown('<p class="section-header">✨ What Can BankVista AI Do?</p>', unsafe_allow_html=True)
+        cards = [
+            ("🤖", "Smart AI Chat", "Just type naturally. Say \"which loans are bad?\" and it understands you mean NPA analysis."),
+            ("📈", "Predictions", "Forecast NPA trends and target achievement probabilities for any branch."),
+            ("🔄", "Branch Compare", "Put any two branches side-by-side with full metrics and visual charts."),
+            ("🗺️", "Heatmaps", "Color-coded visualizations of every metric across all branches."),
+            ("🔍", "Anomaly Detection", "Automatically flags unusual data points using Z-score analysis."),
+            ("📥", "Excel Export", "One-click dynamic Excel dashboards that work completely offline."),
+        ]
+        cols = st.columns(3)
+        for (icon, title, desc), col in zip(cards, cols * 2):
+            with col:
+                st.markdown(f"""
+                <div class="feature-card">
+                    <div class="feature-icon">{icon}</div>
+                    <div class="feature-title">{title}</div>
+                    <div class="feature-desc">{desc}</div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div class="feature-card">
-                <div class="feature-icon">📈</div>
-                <div class="feature-title">Predictive Analytics</div>
-                <div class="feature-desc">
-                    Forecast NPA trends, predict target achievement, and identify
-                    risks before they become problems.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown("""
-            <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <div class="feature-title">Dynamic Dashboards</div>
-                <div class="feature-desc">
-                    Generate intelligent Excel reports with auto-updating metrics
-                    and professional formatting.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
