@@ -398,36 +398,44 @@ class AIAssistant:
 
     # ── Main entry ──
     def chat(self, user_query: str) -> str:
-        intent = self.intent_engine.detect_intent(user_query)
+        """Process user query and return response"""
+        try:
+            intent = self.intent_engine.detect_intent(user_query)
 
         # Resolve follow-ups using context
-        if intent == "FOLLOW_UP":
-            intent = self.last_intent or "overview"
+            if intent == "FOLLOW_UP":
+                intent = self.last_intent or "overview"
 
         # Branch mention → store & adjust intent
-        if intent.startswith("BRANCH:"):
-            branch_name = intent.split(":", 1)[1]
-            self.last_branch = branch_name
-            intent = "branch_detail"
-        else:
+            if intent.startswith("BRANCH:"):
+                branch_name = intent.split(":", 1)[1]
+                self.last_branch = branch_name
+                intent = "branch_detail"
+            else:
             # Check if there's a branch embedded even if intent is something else
-            found_branch = self.intent_engine.extract_branch_from_text(user_query)
-            if found_branch:
-                self.last_branch = found_branch
+                found_branch = self.intent_engine.extract_branch_from_text(user_query)
+                if found_branch:
+                    self.last_branch = found_branch
 
         # Try GPT-4o first
-        if self.api_available and self.client:
-            try:
-                response = self._call_openai(user_query, intent)
-                self._store(user_query, response, intent)
-                return response
-            except Exception:
-                pass
+            if self.api_available and self.client:
+                try:
+                    response = self._call_openai(user_query, intent)
+                    self._store(user_query, response, intent)
+                    return response
+                except Exception as e:
+                # If OpenAI fails, fall back to local
+                    print(f"OpenAI API error: {e}")
+                    pass
 
         # Fallback (local)
-        response = self._local_response(intent, user_query)
-        self._store(user_query, response, intent)
-        return response
+            response = self._local_response(intent, user_query)
+            self._store(user_query, response, intent)
+            return response
+        
+        except Exception as e:
+            error_msg = f"I encountered an issue: {str(e)}. Let me try to help you anyway!"
+            return error_msg
 
     def _store(self, query, response, intent):
         self.conversation_history.append({'user': query, 'assistant': response, 'timestamp': datetime.now()})
@@ -853,27 +861,39 @@ def create_dynamic_excel(df):
     ws['B6'] = '=INDEX(_Data!$C:$C,MATCH(B3,_Data!$B:$B,0))'
 
     # Grade / Score
-    for cell, label, color in [('A8', 'GRADE', '27AE60'), ('D8', 'SCORE', '3498DB')]:
-        ws.merge_cells(f'{cell[0]}8:{cell[0]}9' if cell == 'A8' else 'D8:E8')
-    ws.merge_cells('A8:B8'); ws['A8'] = "GRADE"
-    ws['A8'].font = Font(bold=True, color="FFFFFF"); ws['A8'].fill = PatternFill("solid", fgColor="27AE60")
+    # ── FIXED: Grade / Score Headers & Values ──
+    # GRADE Header - set value BEFORE merging
+    ws['A8'] = "GRADE"
+    ws['A8'].font = Font(bold=True, color="FFFFFF")
+    ws['A8'].fill = PatternFill("solid", fgColor="27AE60")
     ws['A8'].alignment = Alignment(horizontal='center')
-    ws.merge_cells('A9:B9')
+    ws.merge_cells('A8:B8')
+
+    # GRADE Value - set value BEFORE merging
     ws['A9'] = '=IF(C9>=70,"A+",IF(C9>=60,"A",IF(C9>=50,"B",IF(C9>=40,"C","D"))))'
-    ws['A9'].font = Font(bold=True, size=16); ws['A9'].alignment = Alignment(horizontal='center')
+    ws['A9'].font = Font(bold=True, size=16)
+    ws['A9'].alignment = Alignment(horizontal='center')
+    ws.merge_cells('A9:B9')
 
-    ws.merge_cells('D8:E8'); ws['D8'] = "SCORE"
-    ws['D8'].font = Font(bold=True, color="FFFFFF"); ws['D8'].fill = PatternFill("solid", fgColor="3498DB")
+    # SCORE Header - set value BEFORE merging
+    ws['D8'] = "SCORE"
+    ws['D8'].font = Font(bold=True, color="FFFFFF")
+    ws['D8'].fill = PatternFill("solid", fgColor="3498DB")
     ws['D8'].alignment = Alignment(horizontal='center')
-    ws.merge_cells('D9:E9')
-    ws['D9'] = '=ROUND(C9,0)&"/80"'
-    ws['D9'].font = Font(bold=True, size=14); ws['D9'].alignment = Alignment(horizontal='center')
+    ws.merge_cells('D8:E8')
 
-    # Hidden score calc
+    # SCORE Value - set value BEFORE merging
+    ws['D9'] = '=ROUND(C9,0)&"/80"'
+    ws['D9'].font = Font(bold=True, size=14)
+    ws['D9'].alignment = Alignment(horizontal='center')
+    ws.merge_cells('D9:E9')
+
+    # Hidden score calc (Column C9)
     ws['C9'] = ('=MIN(INDEX(_Data!$D:$D,MATCH(B3,_Data!$B:$B,0))/INDEX(_Data!$E:$E,MATCH(B3,_Data!$B:$B,0))*25,25)'
                 '+MIN(INDEX(_Data!$F:$F,MATCH(B3,_Data!$B:$B,0))/INDEX(_Data!$G:$G,MATCH(B3,_Data!$B:$B,0))*25,25)'
                 '+IF(INDEX(_Data!$H:$H,MATCH(B3,_Data!$B:$B,0))<=3,20,IF(INDEX(_Data!$H:$H,MATCH(B3,_Data!$B:$B,0))<=6,12,5))'
                 '+IF(INDEX(_Data!$J:$J,MATCH(B3,_Data!$B:$B,0))>=40,10,5)')
+    ws.column_dimensions['C'].hidden = True
 
     # Metrics table
     ws.merge_cells('A11:H11'); ws['A11'] = "KEY METRICS"
@@ -1004,12 +1024,13 @@ def main():
     with st.sidebar:
         st.markdown("### 📤 Upload Data")
         uploaded = st.file_uploader("Choose file (CSV / Excel)", type=['csv','xlsx','xls'])
-        if st.button("📊 Try Sample Data", use_container_width=True):
+        if st.button("📊 Try Sample Data", key="sidebar_sample_data_btn"):  # ← Added unique key
             st.session_state['use_sample'] = True
             st.session_state['uploaded_df'] = sample_data()
             if 'ai_assistant' in st.session_state:
                 del st.session_state['ai_assistant']
                 st.session_state['chat_messages'] = []
+            st.rerun()  # ← Added explicit rerun
 
         st.markdown("---")
         st.markdown("""
@@ -1123,29 +1144,31 @@ def main():
                 user_input = st.text_input("Ask anything...", key="chat_input", label_visibility="collapsed",
                                            placeholder='e.g. "Which branches have bad loans?" or "Tell me about Warangal"')
             with col2:
-                send_btn = st.button("Send 🚀", use_container_width=True)
+                send_btn = st.button("Send 🚀", key="send_msg_btn")  # ← Added unique key
 
             if send_btn and user_input:
-                st.session_state['chat_messages'].append({'role': 'user', 'content': user_input})
-                response = st.session_state['ai_assistant'].chat(user_input)
-                st.session_state['chat_messages'].append({'role': 'assistant', 'content': response})
-                st.rerun()
+                with st.spinner("Thinking..."):  # ← Added spinner
+                    st.session_state['chat_messages'].append({'role': 'user', 'content': user_input})
+                    response = st.session_state['ai_assistant'].chat(user_input)
+                    st.session_state['chat_messages'].append({'role': 'assistant', 'content': response})
+                    st.rerun()
 
             # Quick buttons – expanded set
             st.markdown("**💡 Quick Questions:**")
             row1 = st.columns(4)
             quick_qs = [
-                ("🔴 Bad Loans?", "Which loans are bad?"),
+                ("🔴 Bad Loans?", "Which branches have bad loans?"),
                 ("💰 Cheap Deposits?", "Where can we get cheap deposits?"),
                 ("🏆 Who's doing well?", "Which branches are doing great?"),
                 ("🛟 Need help?", "Which branches are struggling?"),
             ]
-            for col, (label, q) in zip(row1, quick_qs):
+            for i, (col, (label, q)) in enumerate(zip(row1, quick_qs)):
                 with col:
-                    if st.button(label, use_container_width=True):
-                        st.session_state['chat_messages'].append({'role': 'user', 'content': q})
-                        st.session_state['chat_messages'].append({'role': 'assistant', 'content': st.session_state['ai_assistant'].chat(q)})
-                        st.rerun()
+                    if st.button(label, key=f"quick1_{i}"):  # ← Added unique key
+                        with st.spinner("Thinking..."):  # ← Added spinner
+                            st.session_state['chat_messages'].append({'role': 'user', 'content': q})
+                            st.session_state['chat_messages'].append({'role': 'assistant', 'content': st.session_state['ai_assistant'].chat(q)})
+                        st.rerun()  # ← Added explicit rerun
 
             row2 = st.columns(4)
             quick_qs2 = [
@@ -1154,12 +1177,13 @@ def main():
                 ("🗺️ Zone Summary", "Give me a zone-wise summary"),
                 ("👥 Staff Stats", "How is staff efficiency?"),
             ]
-            for col, (label, q) in zip(row2, quick_qs2):
+            for i, (col, (label, q)) in enumerate(zip(row2, quick_qs2)):
                 with col:
-                    if st.button(label, use_container_width=True):
-                        st.session_state['chat_messages'].append({'role': 'user', 'content': q})
-                        st.session_state['chat_messages'].append({'role': 'assistant', 'content': st.session_state['ai_assistant'].chat(q)})
-                        st.rerun()
+                    if st.button(label, key=f"quick2_{i}"):  # ← Added unique key
+                        with st.spinner("Thinking..."):  # ← Added spinner
+                            st.session_state['chat_messages'].append({'role': 'user', 'content': q})
+                            st.session_state['chat_messages'].append({'role': 'assistant', 'content': st.session_state['ai_assistant'].chat(q)})
+                        st.rerun()  # ← Added explicit rerun
 
         # ════════════════════════════════════════
         # TAB 2 — PREDICTIONS
@@ -1197,7 +1221,7 @@ def main():
                 fig.add_hline(y=6, line_dash="dash", line_color="#f59e0b", annotation_text="Watch: 6%")
                 fig.update_layout(title="NPA Trend Forecast", height=320, plot_bgcolor='white', paper_bgcolor='white',
                                   xaxis_title="Month", yaxis_title="NPA %")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, key="npa_forecast_chart")
 
             with col2:
                 st.markdown("### 🎯 Target Achievement Probability")
@@ -1212,7 +1236,7 @@ def main():
                                      {'range': [75, 100], 'color': 'rgba(16,185,129,0.15)'}],
                            'threshold': {'line': {'color': '#1f2937', 'width': 3}, 'thickness': 0.7, 'value': 75}}))
                 fig.update_layout(height=320, plot_bgcolor='white', paper_bgcolor='white')
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, key="target_probability_gauge")
 
                 st.markdown(f"""
                 <div class="metric-card">
@@ -1277,7 +1301,7 @@ def main():
                     xaxis=dict(range=[0, 120], title="Score (0–100)"),
                     showlegend=False
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, key="branch_performance_bar")
 
             with col2:
                 # Deposit vs Advance pie
@@ -1289,7 +1313,7 @@ def main():
                 )])
                 fig.update_layout(title=f"💰 {selected} — Business Mix", height=300,
                                   plot_bgcolor='white', paper_bgcolor='white')
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, key="branch_business_mix_pie")
 
             # Insight cards
             st.markdown("---")
@@ -1377,7 +1401,7 @@ def main():
                 fig.add_trace(go.Bar(name=b2, x=compare_labels, y=[r2[m] for m in compare_metrics], marker_color='#667eea'))
                 fig.update_layout(barmode='group', title="📊 Side-by-Side Comparison", height=350,
                                   plot_bgcolor='white', paper_bgcolor='white')
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, key="branch_comparison_chart")
 
         # ════════════════════════════════════════
         # TAB 5 — HEATMAPS
@@ -1420,7 +1444,7 @@ def main():
             fig.update_layout(title=f"🗺️ {label_map.get(heatmap_metric, heatmap_metric)} by Branch",
                               height=380, plot_bgcolor='white', paper_bgcolor='white',
                               xaxis_title=label_map.get(heatmap_metric, heatmap_metric))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, key="branch_heatmap")
 
             # Legend
             if heatmap_metric == 'NPA_Percent':
@@ -1457,7 +1481,7 @@ def main():
                 fig.add_trace(go.Bar(name=f"{zone} CASA", x=[zone], y=[zr['CASA_Percent']], marker_color='#10b981'), row=1, col=2)
 
             fig.update_layout(height=320, plot_bgcolor='white', paper_bgcolor='white', barmode='group', showlegend=True)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, key="zone_aggregation_chart")
 
         # ════════════════════════════════════════
         # TAB 6 — ANOMALIES
@@ -1490,7 +1514,7 @@ def main():
                     fig.add_hline(y=all_vals.mean(), line_dash="dash", line_color="#374151", annotation_text=f"Avg: {all_vals.mean():.2f}")
                     fig.update_layout(title=f"⚠️ {metric} — Flagged Branches in Red", height=280,
                                       plot_bgcolor='white', paper_bgcolor='white')
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, key=f"anomaly_chart_{metric}")
 
         # ════════════════════════════════════════
         # TAB 7 — EXPORT
@@ -1511,12 +1535,12 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
-            if st.button("📊 Generate Excel Dashboard", use_container_width=True, type="primary"):
+            if st.button("📊 Generate Excel Dashboard", key="generate_excel_btn", type="primary"):
                 with st.spinner("Building your dashboard..."):
                     excel_bytes = create_dynamic_excel(df)
                 st.download_button("📥 Download Excel Dashboard", excel_bytes,
                     f"BankVista_Dashboard_{date.today().strftime('%Y%m%d')}.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="download_excel_btn")
 
             st.markdown("---")
             c1, c2 = st.columns(2)
@@ -1528,7 +1552,7 @@ def main():
                     <div class="feature-desc">Download your chat history as JSON</div>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button("📝 Export Chat", use_container_width=True):
+                if st.button("📝 Export Chat", key="export_chat_btn"):
                     st.download_button("📥 Download JSON", st.session_state['ai_assistant'].export_conversation(),
                         f"BankVista_Chat_{date.today().strftime('%Y%m%d')}.json", "application/json", use_container_width=True)
             with c2:
