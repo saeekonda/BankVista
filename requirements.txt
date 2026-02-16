@@ -1,5 +1,19 @@
-streamlit
-pandas
-plotly
-openpyxl
-python-dotenv
+# Core Dependencies
+streamlit>=1.31.0
+pandas>=2.0.0
+numpy>=1.24.0
+plotly>=5.18.0
+openpyxl>=3.1.2
+python-dotenv>=1.0.0
+
+# AI Backends (Install what you need)
+openai>=1.12.0
+groq>=0.4.0
+google-generativeai>=0.3.0
+google-genai>=0.1.0
+
+# Optional - For Ollama (no package needed, just run Ollama locally)
+requests>=2.31.0
+
+# Additional utilities
+python-dateutil>=2.8.2
